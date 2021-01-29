@@ -213,28 +213,18 @@ void FlightModeManager::start_flight_task()
 	}
 
 	// offboard
-	if (_vehicle_status_sub.get().nav_state == vehicle_status_s::NAVIGATION_STATE_OFFBOARD
-	    && (_vehicle_control_mode_sub.get().flag_control_altitude_enabled ||
-		_vehicle_control_mode_sub.get().flag_control_position_enabled ||
-		_vehicle_control_mode_sub.get().flag_control_climb_rate_enabled ||
-		_vehicle_control_mode_sub.get().flag_control_velocity_enabled ||
-		_vehicle_control_mode_sub.get().flag_control_acceleration_enabled)) {
+	if (_vehicle_status_sub.get().nav_state == vehicle_status_s::NAVIGATION_STATE_OFFBOARD) {
 
-		should_disable_task = false;
-		FlightTaskError error = switchTask(FlightTaskIndex::Offboard);
-
-		if (error != FlightTaskError::NoError) {
-			if (prev_failure_count == 0) {
-				PX4_WARN("Offboard activation failed with error: %s", errorToString(error));
-			}
-
-			task_failure = true;
-			_task_failure_count++;
-
-		} else {
-			// we want to be in this mode, reset the failure count
-			_task_failure_count = 0;
+		if (FlightTaskIndex::None != _current_task.index) {
+			// reset vehicle constraints
+			vehicle_constraints_s constraints{FlightTask::empty_constraints};
+			constraints.want_takeoff = true;
+			constraints.timestamp = hrt_absolute_time();
+			_vehicle_constraints_pub.publish(constraints);
 		}
+
+		switchTask(FlightTaskIndex::None);
+		_task_failure_count = 0;
 	}
 
 	// Auto-follow me

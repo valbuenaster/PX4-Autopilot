@@ -875,7 +875,6 @@ void set_offboard_loss_nav_state(vehicle_status_s *status, actuator_armed_s *arm
 			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_LAND;
 			return;
 		}
-
 	}
 
 	// If none of the above worked, try to mitigate
@@ -912,7 +911,13 @@ void set_offboard_loss_rc_nav_state(vehicle_status_s *status, actuator_armed_s *
 		return;
 
 	case offboard_loss_rc_actions_t::MANUAL_POSITION:
-		if (status_flags.condition_global_position_valid) {
+		if (status->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING
+		    && status_flags.condition_local_position_valid) {
+
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_POSCTL;
+			return;
+
+		} else if (status_flags.condition_global_position_valid) {
 			status->nav_state = vehicle_status_s::NAVIGATION_STATE_POSCTL;
 			return;
 		}
@@ -948,7 +953,6 @@ void set_offboard_loss_rc_nav_state(vehicle_status_s *status, actuator_armed_s *
 			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_LAND;
 			return;
 		}
-
 	}
 
 	// If none of the above worked, try to mitigate

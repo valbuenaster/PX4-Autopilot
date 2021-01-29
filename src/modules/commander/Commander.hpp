@@ -386,8 +386,6 @@ private:
 	bool		_flight_termination_printed{false};
 	bool		_system_power_usb_connected{false};
 
-	main_state_t	_main_state_pre_offboard{commander_state_s::MAIN_STATE_MANUAL};
-
 	actuator_armed_s	_armed{};
 	commander_state_s	_internal_state{};
 	cpuload_s		_cpuload{};
