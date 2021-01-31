@@ -46,6 +46,7 @@
 #include <lib/cdev/CDev.hpp>
 #include <lib/mathlib/mathlib.h>
 #include <lib/mixer_module/mixer_module.hpp>
+#include <lib/mixer_module/output_control.hpp>
 #include <lib/parameters/param.h>
 #include <lib/perf/perf_counter.h>
 #include <px4_platform_common/px4_config.h>
@@ -53,14 +54,17 @@
 #include <px4_platform_common/log.h>
 #include <px4_platform_common/module.h>
 #include <uORB/Publication.hpp>
-#include <uORB/PublicationMulti.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionCallback.hpp>
+#include <uORB/SubscriptionMultiArray.hpp>
 #include <uORB/topics/actuator_armed.h>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/actuator_outputs.h>
 #include <uORB/topics/multirotor_motor_limits.h>
+#include <uORB/topics/output_control.h>
+#include <uORB/topics/output_feedback.h>
 #include <uORB/topics/parameter_update.h>
+#include <uORB/topics/safety.h>
 
 using namespace time_literals;
 
@@ -126,6 +130,8 @@ public:
 	/** @see ModuleBase */
 	static int print_usage(const char *reason = nullptr);
 
+	const char *get_param_prefix() override { return "PWM_AUX"; }
+
 	void Run() override;
 
 	/** @see ModuleBase::print_status() */
@@ -135,6 +141,9 @@ public:
 	static int fmu_new_mode(PortMode new_mode);
 
 	static int test();
+
+	// Test the use of MAVLink servo setup by publishing to output_control_mavlink
+	int mavlink_servo_test(int servo_id, float value);
 
 	virtual int	ioctl(file *filp, int cmd, unsigned long arg);
 
@@ -157,6 +166,7 @@ private:
 	static_assert(FMU_MAX_ACTUATORS <= MAX_ACTUATORS, "Increase MAX_ACTUATORS if this fails");
 
 	MixingOutput _mixing_output{FMU_MAX_ACTUATORS, *this, MixingOutput::SchedulingPolicy::Auto, true};
+	OutputControl _output_control{FMU_MAX_ACTUATORS, *this, OutputControl::SchedulingPolicy::Auto, true};
 
 	Mode		_mode{MODE_NONE};
 
@@ -170,6 +180,14 @@ private:
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
+	uORB::SubscriptionData<actuator_armed_s> _armed_sub{ORB_ID(actuator_armed)};
+	uORB::SubscriptionData<safety_s> _safety_sub{ORB_ID(safety)};
+
+	uORB::SubscriptionMultiArray<output_control_s> _output_control_subs{ORB_ID::output_control};
+	uint16_t _assigned_functions[FMU_MAX_ACTUATORS] {};
+
+	uORB::Publication<output_control_s> _output_control_mavlink_pub {ORB_ID(output_control_mavlink)};
+
 	unsigned	_num_outputs{0};
 	int		_class_instance{-1};
 
@@ -179,6 +197,13 @@ private:
 	bool		_test_mode{false};
 
 	unsigned	_num_disarmed_set{0};
+
+	bool		_legacy_mixer_mode{true};
+
+	uint16_t	_reverse_pwm_mask{0}; // Local version of legacy mixer variable
+	int16_t		_pwm_trim_values[FMU_MAX_ACTUATORS] {}; // Local version of legacy mixer variable
+	uint16_t	_output_values[FMU_MAX_ACTUATORS]; // The actual values output to the pins
+	void update_outputs();
 
 	perf_counter_t	_cycle_perf;
 	perf_counter_t	_interval_perf;
@@ -190,6 +215,7 @@ private:
 	int			pwm_ioctl(file *filp, int cmd, unsigned long arg);
 
 	void		update_pwm_out_state(bool on);
+	void		update_function_map();
 
 	void		update_params();
 
@@ -201,4 +227,8 @@ private:
 	PWMOut(const PWMOut &) = delete;
 	PWMOut operator=(const PWMOut &) = delete;
 
+
+	DEFINE_PARAMETERS_CUSTOM_PARENT(OutputModuleInterface,
+					(ParamInt<px4::params::PWM_AUX_MODE>)    _p_pwm_aux_mode
+				       );
 };

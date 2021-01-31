@@ -76,4 +76,9 @@ __EXPORT void output_limit_calc(const bool armed, const bool pre_armed, const un
 				const uint16_t *min_output, const uint16_t *max_output,
 				const float *output, uint16_t *effective_output, output_limit_t *limit);
 
+__EXPORT void output_limit_calc_mask(const bool armed, const bool pre_armed, const uint16_t channel_mask,
+				     const uint16_t reverse_mask, const uint16_t *disarmed_output,
+				     const uint16_t *min_output, const uint16_t *max_output,
+				     const float *output, uint16_t *effective_output, output_limit_t *limit);
+
 __END_DECLS

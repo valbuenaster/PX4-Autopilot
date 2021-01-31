@@ -42,6 +42,8 @@ PWMOut::PWMOut() :
 	_mixing_output.setAllMinValues(PWM_DEFAULT_MIN);
 	_mixing_output.setAllMaxValues(PWM_DEFAULT_MAX);
 
+	_output_control.setAllMinValues(PWM_DEFAULT_MIN);
+	_output_control.setAllMaxValues(PWM_DEFAULT_MAX);
 }
 
 PWMOut::~PWMOut()
@@ -65,6 +67,9 @@ int PWMOut::init()
 		return ret;
 	}
 
+	// Getting initial parameter values
+	update_params();
+
 	// XXX best would be to register / de-register the device depending on modes
 
 	/* try to claim the generic PWM output device node as well - it's OK if we fail at this */
@@ -76,13 +81,16 @@ int PWMOut::init()
 		PX4_ERR("FAILED registering class device");
 	}
 
+	// Legacy mixer-module operation flag
+	_legacy_mixer_mode = (_p_pwm_aux_mode.get() == 0) ? true : false;
+
 	_mixing_output.setDriverInstance(_class_instance);
+	_output_control.setDriverInstance(_class_instance);
+
+	PX4_INFO("Initialising with mixer_mode = %d (PWM_AUX_MODE = %d)", _legacy_mixer_mode, _p_pwm_aux_mode.get());
 
 	/* force a reset of the update rate */
 	_current_update_rate = 0;
-
-	// Getting initial parameter values
-	update_params();
 
 	ScheduleNow();
 
@@ -434,6 +442,82 @@ void PWMOut::update_current_rate()
 
 	_current_update_rate = max_rate;
 	_mixing_output.setMaxTopicUpdateRate(update_interval_in_us);
+	_output_control.setMaxTopicUpdateRate(update_interval_in_us);
+}
+
+void PWMOut::update_pwm_rev_mask()
+{
+	uint16_t &reverse_pwm_mask = _mixing_output.reverseOutputMask();
+
+	const char *pname_format;
+
+	if (_class_instance == CLASS_DEVICE_PRIMARY) {
+		pname_format = "PWM_MAIN_REV%d";
+
+	} else if (_class_instance == CLASS_DEVICE_SECONDARY) {
+		pname_format = "PWM_AUX_REV%d";
+
+	} else {
+		PX4_ERR("PWM REV only for MAIN and AUX");
+		return;
+	}
+
+	for (unsigned i = 0; i < FMU_MAX_ACTUATORS; i++) {
+		char pname[16];
+
+		/* fill the channel reverse mask from parameters */
+		sprintf(pname, pname_format, i + 1);
+		param_t param_h = param_find(pname);
+
+		if (param_h != PARAM_INVALID) {
+			int32_t ival = 0;
+			param_get(param_h, &ival);
+			reverse_pwm_mask |= ((int16_t)(ival != 0)) << i;
+		}
+	}
+}
+
+void PWMOut::update_pwm_trims()
+{
+	PX4_DEBUG("update_pwm_trims");
+
+	if (!_mixing_output.mixers()) {
+		return;
+	}
+
+	int16_t values[FMU_MAX_ACTUATORS] = {};
+
+	const char *pname_format;
+
+	if (_class_instance == CLASS_DEVICE_PRIMARY) {
+		pname_format = "PWM_MAIN_TRIM%d";
+
+	} else if (_class_instance == CLASS_DEVICE_SECONDARY) {
+		pname_format = "PWM_AUX_TRIM%d";
+
+	} else {
+		PX4_ERR("PWM TRIM only for MAIN and AUX");
+		return;
+	}
+
+	for (unsigned i = 0; i < FMU_MAX_ACTUATORS; i++) {
+		char pname[16];
+
+		/* fill the struct from parameters */
+		sprintf(pname, pname_format, i + 1);
+		param_t param_h = param_find(pname);
+
+		if (param_h != PARAM_INVALID) {
+			float pval = 0.0f;
+			param_get(param_h, &pval);
+			values[i] = (int16_t)(10000 * pval);
+			PX4_DEBUG("%s: %d", pname, values[i]);
+		}
+	}
+
+	/* copy the trim values to the mixer offsets */
+	int n_out = _mixing_output.mixers()->set_trims(values, FMU_MAX_ACTUATORS);
+	PX4_DEBUG("set %d trims", n_out);
 }
 
 int PWMOut::task_spawn(int argc, char *argv[])
@@ -512,6 +596,7 @@ void PWMOut::Run()
 	if (should_exit()) {
 		ScheduleClear();
 		_mixing_output.unregister();
+		_output_control.unregister();
 
 		exit_and_cleanup();
 		return;
@@ -523,10 +608,19 @@ void PWMOut::Run()
 	// push backup schedule
 	ScheduleDelayed(_backup_schedule_interval_us);
 
-	_mixing_output.update();
+	bool pwm_on;
 
-	/* update PWM status if armed or if disarmed PWM values are set */
-	bool pwm_on = _mixing_output.armed().armed || (_num_disarmed_set > 0) || _mixing_output.armed().in_esc_calibration_mode;
+	if (_legacy_mixer_mode) {
+		_mixing_output.update();
+
+		/* update PWM status if armed or if disarmed PWM values are set */
+		pwm_on = _mixing_output.armed().armed || (_num_disarmed_set > 0) || _mixing_output.armed().in_esc_calibration_mode;
+
+	} else {
+		_output_control.update();
+
+		pwm_on = _armed_sub.get().armed || (_num_disarmed_set > 0);
+	}
 
 	if (_pwm_on != pwm_on) {
 		_pwm_on = pwm_on;
@@ -547,8 +641,14 @@ void PWMOut::Run()
 		update_current_rate();
 	}
 
-	// check at end of cycle (updateSubscriptions() can potentially change to a different WorkQueue thread)
-	_mixing_output.updateSubscriptions(true, true);
+	if (_legacy_mixer_mode) {
+		// check at end of cycle (updateSubscriptions() can potentially change to a different WorkQueue thread)
+		_mixing_output.updateSubscriptions(true, true);
+
+	} else {
+		/// TODO: Allow parallel execution with _mixing_output?
+		_output_control.updateSubscriptions(true, false);
+	}
 
 	perf_end(_cycle_perf);
 }
@@ -720,6 +820,35 @@ void PWMOut::update_params()
 	}
 
 	_num_disarmed_set = num_disarmed_set;
+
+	if (_legacy_mixer_mode) {
+		update_pwm_rev_mask();
+		update_pwm_trims();
+
+	} else {
+		// OutputControl class handles all MIN / MAX / TRIM / etc. parameters
+		_output_control.updateParams();
+
+	}
+
+	bool new_mode = (_p_pwm_aux_mode.get() == 0) ? true : false;
+
+	if (new_mode != _legacy_mixer_mode) {
+		PX4_INFO("Changing _legacy_mixer_mode to %d", new_mode);
+
+		if (_legacy_mixer_mode) {
+			// Disabling mixer mode
+			_mixing_output.unregister();
+			_mixing_output.resetMixer();
+
+		} else {
+			// Disabling new OutputControl mode
+			_output_control.unregister();
+			/// TODO: This is where we should initiate mixer loading, etc.
+		}
+	}
+
+	_legacy_mixer_mode = new_mode;
 }
 
 int PWMOut::ioctl(file *filp, int cmd, unsigned long arg)
@@ -832,6 +961,7 @@ int PWMOut::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 					/* ignore 0 */
 				} else if (pwm->values[i] > PWM_HIGHEST_MAX) {
 					_mixing_output.failsafeValue(i) = PWM_HIGHEST_MAX;
+					_output_control.failsafeValue(i) = PWM_HIGHEST_MAX;
 
 				}
 
@@ -839,6 +969,7 @@ int PWMOut::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 
 				else if (pwm->values[i] < PWM_LOWEST_MIN) {
 					_mixing_output.failsafeValue(i) = PWM_LOWEST_MIN;
+					_output_control.failsafeValue(i) = PWM_LOWEST_MIN;
 
 				}
 
@@ -846,6 +977,7 @@ int PWMOut::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 
 				else {
 					_mixing_output.failsafeValue(i) = pwm->values[i];
+					_output_control.failsafeValue(i) = pwm->values[i];
 				}
 			}
 
@@ -856,7 +988,13 @@ int PWMOut::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 			struct pwm_output_values *pwm = (struct pwm_output_values *)arg;
 
 			for (unsigned i = 0; i < FMU_MAX_ACTUATORS; i++) {
-				pwm->values[i] = _mixing_output.failsafeValue(i);
+				if (_legacy_mixer_mode) {
+					pwm->values[i] = _mixing_output.failsafeValue(i);
+
+				} else {
+					pwm->values[i] = _output_control.failsafeValue(i);
+
+				}
 			}
 
 			pwm->channel_count = FMU_MAX_ACTUATORS;
@@ -877,18 +1015,21 @@ int PWMOut::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 					/* ignore 0 */
 				} else if (pwm->values[i] > PWM_HIGHEST_MAX) {
 					_mixing_output.disarmedValue(i) = PWM_HIGHEST_MAX;
+					_output_control.disarmedValue(i) = PWM_HIGHEST_MAX;
 				}
 
 #if PWM_LOWEST_MIN > 0
 
 				else if (pwm->values[i] < PWM_LOWEST_MIN) {
 					_mixing_output.disarmedValue(i) = PWM_LOWEST_MIN;
+					_output_control.disarmedValue(i) = PWM_LOWEST_MIN;
 				}
 
 #endif
 
 				else {
 					_mixing_output.disarmedValue(i) = pwm->values[i];
+					_output_control.disarmedValue(i) = pwm->values[i];
 				}
 			}
 
@@ -899,8 +1040,16 @@ int PWMOut::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 			_num_disarmed_set = 0;
 
 			for (unsigned i = 0; i < FMU_MAX_ACTUATORS; i++) {
-				if (_mixing_output.disarmedValue(i) > 0) {
-					_num_disarmed_set++;
+				if (_legacy_mixer_mode) {
+					if (_mixing_output.disarmedValue(i) > 0) {
+						_num_disarmed_set++;
+					}
+
+				} else {
+					if (_output_control.disarmedValue(i) > 0) {
+						_num_disarmed_set++;
+					}
+
 				}
 			}
 
@@ -911,7 +1060,13 @@ int PWMOut::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 			struct pwm_output_values *pwm = (struct pwm_output_values *)arg;
 
 			for (unsigned i = 0; i < FMU_MAX_ACTUATORS; i++) {
-				pwm->values[i] = _mixing_output.disarmedValue(i);
+				if (_legacy_mixer_mode) {
+					pwm->values[i] = _mixing_output.disarmedValue(i);
+
+				} else {
+					pwm->values[i] = _output_control.disarmedValue(i);
+
+				}
 			}
 
 			pwm->channel_count = FMU_MAX_ACTUATORS;
@@ -932,19 +1087,21 @@ int PWMOut::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 					/* ignore 0 */
 				} else if (pwm->values[i] > PWM_HIGHEST_MIN) {
 					_mixing_output.minValue(i) = PWM_HIGHEST_MIN;
-
+					_output_control.minValue(i) = PWM_HIGHEST_MIN;
 				}
 
 #if PWM_LOWEST_MIN > 0
 
 				else if (pwm->values[i] < PWM_LOWEST_MIN) {
 					_mixing_output.minValue(i) = PWM_LOWEST_MIN;
+					_output_control.minValue(i) = PWM_LOWEST_MIN;
 				}
 
 #endif
 
 				else {
 					_mixing_output.minValue(i) = pwm->values[i];
+					_output_control.minValue(i) = pwm->values[i];
 				}
 			}
 
@@ -955,7 +1112,13 @@ int PWMOut::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 			struct pwm_output_values *pwm = (struct pwm_output_values *)arg;
 
 			for (unsigned i = 0; i < FMU_MAX_ACTUATORS; i++) {
-				pwm->values[i] = _mixing_output.minValue(i);
+				if (_legacy_mixer_mode) {
+					pwm->values[i] = _mixing_output.minValue(i);
+
+				} else {
+					pwm->values[i] = _output_control.minValue(i);
+
+				}
 			}
 
 			pwm->channel_count = FMU_MAX_ACTUATORS;
@@ -977,12 +1140,15 @@ int PWMOut::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 					/* ignore 0 */
 				} else if (pwm->values[i] < PWM_LOWEST_MAX) {
 					_mixing_output.maxValue(i) = PWM_LOWEST_MAX;
+					_output_control.maxValue(i) = PWM_LOWEST_MAX;
 
 				} else if (pwm->values[i] > PWM_HIGHEST_MAX) {
 					_mixing_output.maxValue(i) = PWM_HIGHEST_MAX;
+					_output_control.maxValue(i) = PWM_HIGHEST_MAX;
 
 				} else {
 					_mixing_output.maxValue(i) = pwm->values[i];
+					_output_control.maxValue(i) = pwm->values[i];
 				}
 			}
 
@@ -993,24 +1159,68 @@ int PWMOut::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 			struct pwm_output_values *pwm = (struct pwm_output_values *)arg;
 
 			for (unsigned i = 0; i < FMU_MAX_ACTUATORS; i++) {
-				pwm->values[i] = _mixing_output.maxValue(i);
+				if (_legacy_mixer_mode) {
+					pwm->values[i] = _mixing_output.maxValue(i);
+
+				} else {
+					pwm->values[i] = _output_control.maxValue(i);
+
+				}
 			}
 
 			pwm->channel_count = FMU_MAX_ACTUATORS;
 			arg = (unsigned long)&pwm;
+			break;
+		}
+
+	case PWM_SERVO_SET_TRIM_PWM: {
+			struct pwm_output_values *pwm = (struct pwm_output_values *)arg;
+
+			/* discard if too many values are sent */
+			if (pwm->channel_count > FMU_MAX_ACTUATORS) {
+				PX4_DEBUG("error: too many trim values: %d", pwm->channel_count);
+				ret = -EINVAL;
+				break;
+			}
+
+			/* copy the trim values to the mixer offsets */
+			if (_legacy_mixer_mode) {
+
+				if (_mixing_output.mixers() == nullptr) {
+					PX4_ERR("error: no mixer loaded");
+					ret = -EIO;
+					break;
+				}
+
+				_mixing_output.mixers()->set_trims((int16_t *)pwm->values, pwm->channel_count);
+
+			} else {
+				_output_control.setTrims((int16_t *)pwm->values, pwm->channel_count);
+
+			}
+
+			PX4_DEBUG("set_trims: %d, %d, %d, %d", pwm->values[0], pwm->values[1], pwm->values[2], pwm->values[3]);
+
+			break;
 		}
 		break;
 
 	case PWM_SERVO_GET_TRIM_PWM: {
 			struct pwm_output_values *pwm = (struct pwm_output_values *)arg;
 
-			if (_mixing_output.mixers() == nullptr) {
-				memset(pwm, 0, sizeof(pwm_output_values));
-				PX4_WARN("warning: trim values not valid - no mixer loaded");
+			if (_legacy_mixer_mode) {
+				if (_mixing_output.mixers() == nullptr) {
+					memset(pwm, 0, sizeof(pwm_output_values));
+					PX4_WARN("warning: trim values not valid - no mixer loaded");
+
+				} else {
+
+					pwm->channel_count = _mixing_output.mixers()->get_trims((int16_t *)pwm->values);
+				}
 
 			} else {
+				pwm->channel_count = _output_control.getTrims((int16_t *)pwm->values);
 
-				pwm->channel_count = _mixing_output.mixers()->get_trims((int16_t *)pwm->values);
 			}
 		}
 		break;
@@ -1324,14 +1534,30 @@ int PWMOut::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 		}
 
 	case MIXERIOCRESET:
-		_mixing_output.resetMixerThreadSafe();
+		if (_legacy_mixer_mode) {
+			_mixing_output.resetMixerThreadSafe();
+
+		} else {
+			/// TODO: Better error code to use?
+			ret = -EINVAL;
+
+		}
 
 		break;
 
 	case MIXERIOCLOADBUF: {
 			const char *buf = (const char *)arg;
 			unsigned buflen = strlen(buf);
-			ret = _mixing_output.loadMixerThreadSafe(buf, buflen);
+
+			if (_legacy_mixer_mode) {
+				ret = _mixing_output.loadMixerThreadSafe(buf, buflen);
+				update_pwm_trims();
+
+			} else {
+				/// TODO: Better error code to use?
+				ret = -EINVAL;
+
+			}
 			update_params();
 
 			break;
@@ -1862,6 +2088,21 @@ err_out_no_test:
 	return rv;
 }
 
+int PWMOut::mavlink_servo_test(int servo_id, float value)
+{
+	output_control_s controls = {};
+	controls.timestamp = hrt_absolute_time();
+	controls.n_outputs = 1;
+	controls.function[0] = output_control_s::FUNCTION_MAVLINK_SERVO0 + servo_id;
+	controls.value[0] = value;
+
+	PX4_INFO("Publishing output_control_mavlink with servo %d, value %.3f", servo_id, (double)value);
+
+	_output_control_mavlink_pub.publish(controls);
+
+	return PX4_OK;
+}
+
 int PWMOut::custom_command(int argc, char *argv[])
 {
 	PortMode new_mode = PORT_MODE_UNSET;
@@ -2006,6 +2247,18 @@ int PWMOut::custom_command(int argc, char *argv[])
 		return test();
 	}
 
+	if (!strcmp(verb, "mavtest")) {
+		int servo_id = 0;
+		float servo_val = 1.f;
+
+		if (argc > 2) {
+			servo_id = strtol(argv[1], nullptr, 0);
+			servo_val = strtof(argv[2], nullptr);
+		}
+
+		return PWMOut::get_instance()->mavlink_servo_test(servo_id, servo_val);
+	}
+
 	return print_usage("unknown command");
 }
 
@@ -2060,7 +2313,16 @@ int PWMOut::print_status()
 
 	perf_print_counter(_cycle_perf);
 	perf_print_counter(_interval_perf);
-	_mixing_output.printStatus();
+
+	if (_legacy_mixer_mode) {
+		PX4_INFO("Legacy mixer mode selected");
+		_mixing_output.printStatus();
+
+	} else {
+		PX4_INFO("New output control mode selected");
+		_output_control.printStatus();
+
+	}
 
 	return 0;
 }
@@ -2140,6 +2402,8 @@ mixer files.
 	PRINT_MODULE_USAGE_ARG("<bus_id> <rate>", "Specify the bus id (>=0) and rate in Hz", false);
 
 	PRINT_MODULE_USAGE_COMMAND_DESCR("test", "Test inputs and outputs");
+	PRINT_MODULE_USAGE_COMMAND_DESCR("mavtest", "Test control of a servo via MAVLink DO_SET_SERVO");
+	PRINT_MODULE_USAGE_ARG("<ID> <val>", "Servo ID (1-8) and value ([-1, 1])", true);
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 
 	return 0;

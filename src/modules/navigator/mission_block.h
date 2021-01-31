@@ -48,6 +48,7 @@
 #include <uORB/Publication.hpp>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/mission.h>
+#include <uORB/topics/output_control.h>
 #include <uORB/topics/position_setpoint_triplet.h>
 #include <uORB/topics/vehicle_command.h>
 #include <uORB/topics/vehicle_global_position.h>
@@ -153,4 +154,5 @@ protected:
 	hrt_abstime _time_wp_reached{0};
 
 	uORB::Publication<actuator_controls_s>	_actuator_pub{ORB_ID(actuator_controls_2)};
+	uORB::Publication<output_control_s>	_output_control_pub{ORB_ID(output_control_mavlink)};
 };

@@ -827,6 +827,19 @@ Commander::handle_command(const vehicle_command_s &cmd)
 		}
 		break;
 
+	case vehicle_command_s::VEHICLE_CMD_DO_SET_SERVO: {
+			output_control_s controls {};
+			controls.timestamp = hrt_absolute_time();
+			controls.n_outputs = 1;
+			controls.function[0] = output_control_s::FUNCTION_MAVLINK_SERVO0 + (int)cmd.param1;
+			controls.value[0] = cmd.param2;
+
+			_output_control_pub.publish(controls);
+
+			cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
+		}
+		break;
+
 	case vehicle_command_s::VEHICLE_CMD_NAV_GUIDED_ENABLE: {
 			transition_result_t res = TRANSITION_DENIED;
 

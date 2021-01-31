@@ -31,4 +31,4 @@
 #
 ############################################################################
 
-px4_add_library(mixer_module mixer_module.cpp)
+px4_add_library(mixer_module mixer_module.cpp output_control.cpp)
