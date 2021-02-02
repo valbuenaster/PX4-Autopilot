@@ -165,8 +165,8 @@ private:
 	static constexpr int FMU_MAX_ACTUATORS = DIRECT_PWM_OUTPUT_CHANNELS;
 	static_assert(FMU_MAX_ACTUATORS <= MAX_ACTUATORS, "Increase MAX_ACTUATORS if this fails");
 
-	MixingOutput _mixing_output{FMU_MAX_ACTUATORS, *this, MixingOutput::SchedulingPolicy::Auto, true};
 	OutputControl _output_control{FMU_MAX_ACTUATORS, *this, OutputControl::SchedulingPolicy::Auto, true};
+	MixingOutput _mixing_output{FMU_MAX_ACTUATORS, *this, MixingOutput::SchedulingPolicy::Auto, true, true, (OutputControlInterface *) &_output_control};
 
 	Mode		_mode{MODE_NONE};
 

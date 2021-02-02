@@ -34,6 +34,7 @@
 #include "mixer_module.hpp"
 
 #include <lib/mixer/MultirotorMixer/MultirotorMixer.hpp>
+#include <lib/mixer_module/output_control.hpp>
 
 #include <uORB/Publication.hpp>
 #include <px4_platform_common/log.h>
@@ -43,8 +44,9 @@ using namespace time_literals;
 
 MixingOutput::MixingOutput(uint8_t max_num_outputs, OutputModuleInterface &interface,
 			   SchedulingPolicy scheduling_policy,
-			   bool support_esc_calibration, bool ramp_up)
+			   bool support_esc_calibration, bool ramp_up, OutputControlInterface *ointerface)
 	: ModuleParams(&interface),
+	  _ointerface(ointerface),
 	  _control_subs{
 	{&interface, ORB_ID(actuator_controls_0)},
 	{&interface, ORB_ID(actuator_controls_1)},
@@ -356,10 +358,15 @@ bool MixingOutput::update()
 		unsigned num_motor_test = motorTest();
 
 		if (num_motor_test > 0) {
+			// if (_ointerface == nullptr) { /// TODO: ensure this works in motor test context
 			if (_interface.updateOutputs(false, _current_output_value, num_motor_test, 1)) {
 				actuator_outputs_s actuator_outputs{};
 				setAndPublishActuatorOutputs(num_motor_test, actuator_outputs);
 			}
+
+			// } else {
+			// 	_ointerface->mixingOutputCallback(_current_output_value, num_motor_test);
+			// }
 
 			handleCommands();
 			return true;
@@ -403,6 +410,7 @@ bool MixingOutput::update()
 
 	mixed_num_outputs = _mixers->mix(outputs, _max_num_outputs);
 
+
 	/* the output limit call takes care of out of band errors, NaN and constrains */
 	output_limit_calc(_throttle_armed, armNoThrottle(), mixed_num_outputs, _reverse_output_mask,
 			  _disarmed_value, _min_value, _max_value, outputs, _current_output_value, &_output_limit);
@@ -429,12 +437,17 @@ bool MixingOutput::update()
 	reorderOutputs(_current_output_value);
 
 	/* now return the outputs to the driver */
-	if (_interface.updateOutputs(stop_motors, _current_output_value, mixed_num_outputs, n_updates)) {
-		actuator_outputs_s actuator_outputs{};
-		setAndPublishActuatorOutputs(mixed_num_outputs, actuator_outputs);
+	if (_ointerface == nullptr) {
+		if (_interface.updateOutputs(stop_motors, _current_output_value, mixed_num_outputs, n_updates)) {
+			actuator_outputs_s actuator_outputs{};
+			setAndPublishActuatorOutputs(mixed_num_outputs, actuator_outputs);
 
-		publishMixerStatus(actuator_outputs);
-		updateLatencyPerfCounter(actuator_outputs);
+			publishMixerStatus(actuator_outputs);
+			updateLatencyPerfCounter(actuator_outputs);
+		}
+
+	} else {
+		_ointerface->mixingOutputCallback(_current_output_value, mixed_num_outputs);
 	}
 
 	handleCommands();

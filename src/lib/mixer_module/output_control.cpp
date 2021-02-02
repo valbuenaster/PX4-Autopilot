@@ -70,12 +70,6 @@ _control_latency_perf(perf_alloc(PC_ELAPSED, "control latency"))
 	_armed.in_esc_calibration_mode = false;
 
 	px4_sem_init(&_lock, 0, 1);
-
-	// Enforce the existence of the test_motor topic, so we won't miss initial publications
-	test_motor_s test{};
-	uORB::Publication<test_motor_s> test_motor_pub{ORB_ID(test_motor)};
-	test_motor_pub.publish(test);
-	_motor_test.test_motor_sub.subscribe();
 }
 
 OutputControl::~OutputControl()
@@ -104,31 +98,13 @@ void OutputControl::updateParams()
 {
 	ModuleParams::updateParams();
 
-	// Load the Mode parameter
-	/// TODO: for later: this is the param that will switch between mixer-file
-	/// output and parameter-controlled output
-	/// Should we have a mode where we allow both to coexist, or should that be the default?
-	char pname[16];
-	sprintf(pname, "%s_MODE", _output_module_prefix);
-
-	int32_t mode;
-	param_get(param_find(pname), &mode);
-
-	if (mode == 0) {
-		// Legacy mixer mode; don't run this module?
-		return;
-	}
-
 	/** Update Function Mappings */
 
 	updateParamValues("FUNC", _assigned_function);
-	// updateParamValues("MIN",  _min_value);
-	// updateParamValues("MAX",  _max_value);
 	updateParamValues("FAIL", _failsafe_value);
 	updateParamValues("DIS",  _disarmed_value);
 	updateMinValues();
 	updateMaxValues();
-	// updateParamValues("TRIM", _trim_value);
 	updateTrimValues();
 	updateReverseMask();
 
@@ -157,6 +133,22 @@ void OutputControl::updateParams()
 
 		}
 	}
+}
+
+// bool OutputControl::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS],
+// 				   unsigned num_outputs, unsigned num_control_groups_updated)
+void OutputControl::mixingOutputCallback(uint16_t *outputs, unsigned nval)
+{
+	unsigned num_outputs = (nval < _max_num_outputs) ? nval : _max_num_outputs;
+
+	for (unsigned i = 0; i < num_outputs; i++) {
+		if (this->getAssignedFunction(i) == output_control_s::FUNCTION_MIXER) {
+			/// TODO: Have functions MIXER1 through MIXER16 and map outputs by index
+			_current_output_value[i] = outputs[i];
+		}
+	}
+
+	// return true;
 }
 
 bool OutputControl::updateSubscriptions(bool allow_wq_switch, bool limit_callbacks_to_primary)
@@ -301,98 +293,6 @@ void OutputControl::unregister()
 	}
 }
 
-/**!
- * TODO:
- *
- * 1. Handle slew rate limiting.  Should that apply to the output module specifically, or be handled upstream?
- * 2. Handle "motor test" / general "test" override feature.  Should this be handled at the output module level,
- *    or upstream?
- */
-
-// void OutputControl::updateOutputSlewrateMultirotorMixer()
-// {
-// 	const hrt_abstime now = hrt_absolute_time();
-// 	const float dt = math::constrain((now - _time_last_dt_update_multicopter) / 1e6f, 0.0001f, 0.02f);
-// 	_time_last_dt_update_multicopter = now;
-
-// 	// maximum value the outputs of the multirotor mixer are allowed to change in this cycle
-// 	// factor 2 is needed because actuator outputs are in the range [-1,1]
-// 	const float delta_out_max = 2.0f * 1000.0f * dt / (_max_value[0] - _min_value[0]) / _param_mot_slew_max.get();
-// 	_mixers->set_max_delta_out_once(delta_out_max);
-// }
-
-// void OutputControl::updateOutputSlewrateSimplemixer()
-// {
-// 	const hrt_abstime now = hrt_absolute_time();
-// 	const float dt = math::constrain((now - _time_last_dt_update_simple_mixer) / 1e6f, 0.0001f, 0.02f);
-// 	_time_last_dt_update_simple_mixer = now;
-
-// 	// set dt for slew rate limiter in SimpleMixer (is reset internally after usig it, so needs to be set on every update)
-// 	_mixers->set_dt_once(dt);
-// }
-
-// unsigned OutputControl::motorTest()
-// {
-// 	test_motor_s test_motor;
-// 	bool had_update = false;
-
-// 	while (_motor_test.test_motor_sub.update(&test_motor)) {
-// 		if (test_motor.driver_instance != _driver_instance ||
-// 		    test_motor.timestamp == 0 ||
-// 		    hrt_elapsed_time(&test_motor.timestamp) > 100_ms) {
-// 			continue;
-// 		}
-
-// 		bool in_test_mode = test_motor.action == test_motor_s::ACTION_RUN;
-
-// 		if (in_test_mode != _motor_test.in_test_mode) {
-// 			// reset all outputs to disarmed on state change
-// 			for (int i = 0; i < MAX_ACTUATORS; ++i) {
-// 				_current_output_value[i] = _disarmed_value[i];
-// 			}
-// 		}
-
-// 		if (in_test_mode) {
-// 			int idx = test_motor.motor_number;
-
-// 			if (idx < MAX_ACTUATORS) {
-// 				if (test_motor.value < 0.f) {
-// 					_current_output_value[idx] = _disarmed_value[idx];
-
-// 				} else {
-// 					_current_output_value[idx] =
-// 						math::constrain<uint16_t>(_min_value[idx] + (uint16_t)((_max_value[idx] - _min_value[idx]) * test_motor.value),
-// 									  _min_value[idx], _max_value[idx]);
-// 				}
-// 			}
-
-// 			if (test_motor.timeout_ms > 0) {
-// 				_motor_test.timeout = test_motor.timestamp + test_motor.timeout_ms * 1000;
-
-// 			} else {
-// 				_motor_test.timeout = 0;
-// 			}
-// 		}
-
-// 		_motor_test.in_test_mode = in_test_mode;
-// 		had_update = true;
-// 	}
-
-// 	// check for timeouts
-// 	if (_motor_test.timeout != 0 && hrt_absolute_time() > _motor_test.timeout) {
-// 		_motor_test.in_test_mode = false;
-// 		_motor_test.timeout = 0;
-
-// 		for (int i = 0; i < MAX_ACTUATORS; ++i) {
-// 			_current_output_value[i] = _disarmed_value[i];
-// 		}
-
-// 		had_update = true;
-// 	}
-
-// 	return (_motor_test.in_test_mode || had_update) ? _max_num_outputs : 0;
-// }
-
 bool OutputControl::update()
 {
 	// check arming state
@@ -406,38 +306,14 @@ bool OutputControl::update()
 		/* Update the armed status and check that we're not locked down.
 		 * We also need to arm throttle for the ESC calibration. */
 		_throttle_armed = (_armed.armed && !_armed.lockdown) || _armed.in_esc_calibration_mode;
-
-		if (_armed.armed) {
-			_motor_test.in_test_mode = false;
-		}
 	}
 
-	// // check for motor test
-	// if (!_armed.armed && !_armed.manual_lockdown) {
-	// 	unsigned num_motor_test = motorTest();
+	/// TODO: Motor test
+	/// TODO: Output slew-rate limiting for multirotors / simple outputs
+	/// TODO: ESC calibration
 
-	// 	if (num_motor_test > 0) {
-	// 		if (_interface.updateOutputs(false, _current_output_value, num_motor_test, 1)) {
-	// 			actuator_outputs_s actuator_outputs{};
-	// 			setAndPublishActuatorOutputs(num_motor_test, actuator_outputs);
-	// 		}
+	/* do 'mixing' */
 
-	// 		// handleCommands();
-	// 		return true;
-	// 	}
-	// }
-
-	if (_param_mot_slew_max.get() > FLT_EPSILON) {
-		/// TODO: Implement in ControlAllocation module
-		// updateOutputSlewrateMultirotorMixer();
-	}
-
-	/// TODO: Implement in ControlAllocation module
-	// updateOutputSlewrateSimplemixer(); // update dt for output slew rate in simple mixer
-
-	/// TODO: How to handle ESC calibration with the reorg?
-
-	/* do mixing */
 	float outputs[MAX_ACTUATORS] {};
 
 	uint16_t mixed_outputs_mask = 0;
@@ -476,7 +352,6 @@ bool OutputControl::update()
 	}
 
 	/* the output limit call takes care of out of band errors, NaN and constrains */
-	/// TODO: Can use mixed_outputs_mask to control which channels get updated instead of using the old mixed_outputs_max
 	output_limit_calc_mask(_throttle_armed, armNoThrottle(), mixed_outputs_mask, _reverse_output_mask,
 			       _disarmed_value, _min_value, _max_value, outputs, _current_output_value, &_output_limit);
 
@@ -503,15 +378,12 @@ bool OutputControl::update()
 	}
 
 	/* now return the outputs to the driver */
-	if (_interface.updateOutputs(stop_motors, _current_output_value, MAX_ACTUATORS,
-				     n_updates)) { // mixed_num_outputs -> MAX_ACTUATORS
+	if (_interface.updateOutputs(stop_motors, _current_output_value, MAX_ACTUATORS, n_updates)) {
 		actuator_outputs_s actuator_outputs{};
-		setAndPublishActuatorOutputs(MAX_ACTUATORS, actuator_outputs); // mixed_num_outputs -> MAX_ACTUATORS
+		setAndPublishActuatorOutputs(MAX_ACTUATORS, actuator_outputs);
 
 		updateLatencyPerfCounter(actuator_outputs);
 	}
-
-	// handleCommands();
 
 	return true;
 }
