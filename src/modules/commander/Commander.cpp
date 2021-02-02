@@ -359,6 +359,18 @@ int Commander::custom_command(int argc, char *argv[])
 		return (ret ? 0 : 1);
 	}
 
+	if (!strcmp(argv[0], "servo")) {
+		if (argc < 3) {
+			Commander::print_usage("not enough arguments; missing [id, value]");
+			return 1;
+		}
+
+		bool ret = send_vehicle_command(vehicle_command_s::VEHICLE_CMD_DO_SET_SERVO,
+						strtof(argv[1], nullptr), strtof(argv[2], nullptr));
+
+		return (ret ? 0 : 1);
+	}
+
 #endif
 
 	return print_usage("unknown command");
