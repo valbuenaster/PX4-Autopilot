@@ -52,8 +52,11 @@ then
 
 fi
 
-set MIXER direct
-set PWM_OUT 1234
+set MIXER custom
+set MIXER_FILE ${R}etc/mixers/pass.aux.mix
+# set MIXER_FILE  ${R}etc/mixers/direct_aux.aux.mix
+# set PWM_OUT 1234
 
-set MIXER_AUX direct_aux
+set MIXER_AUX custom
+set MIXER_AUX_FILE ${R}etc/mixers/direct.main.mix
 set PWM_AUX_OUT 1234

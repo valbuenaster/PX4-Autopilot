@@ -189,7 +189,7 @@ void
 ControlAllocator::update_effectiveness_source()
 {
 	EffectivenessSource source = (EffectivenessSource)_param_ca_airframe.get();
-
+	PX4_INFO("update_effectiveness_source()");
 	if (_effectiveness_source_id != source) {
 
 		// try to instanciate new effectiveness source
@@ -198,6 +198,7 @@ ControlAllocator::update_effectiveness_source()
 		switch (source) {
 		case EffectivenessSource::NONE:
 		case EffectivenessSource::MULTIROTOR:
+			PX4_INFO("Loading new ActuatorEffectivenessMultirotor()"); /// DEBUGGING
 			tmp = new ActuatorEffectivenessMultirotor();
 			break;
 
