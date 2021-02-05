@@ -189,7 +189,7 @@ void
 ControlAllocator::update_effectiveness_source()
 {
 	EffectivenessSource source = (EffectivenessSource)_param_ca_airframe.get();
-	PX4_INFO("update_effectiveness_source()");
+
 	if (_effectiveness_source_id != source) {
 
 		// try to instanciate new effectiveness source
@@ -198,7 +198,6 @@ ControlAllocator::update_effectiveness_source()
 		switch (source) {
 		case EffectivenessSource::NONE:
 		case EffectivenessSource::MULTIROTOR:
-			PX4_INFO("Loading new ActuatorEffectivenessMultirotor()"); /// DEBUGGING
 			tmp = new ActuatorEffectivenessMultirotor();
 			break;
 
@@ -343,7 +342,7 @@ ControlAllocator::Run()
 		// Publish on legacy topics for compatibility with
 		// the current mixer system and multicopter controller
 		// TODO: remove
-		publish_legacy_actuator_controls();
+		// publish_legacy_actuator_controls();
 	}
 
 	perf_end(_loop_perf);
@@ -385,6 +384,21 @@ ControlAllocator::publish_actuator_setpoint()
 	actuator_sp.copyTo(vehicle_actuator_setpoint.actuator);
 
 	_vehicle_actuator_setpoint_pub.publish(vehicle_actuator_setpoint);
+
+	/// TODO: Merge with the vehicle_actuator_setpoint topic
+	output_control_s outputs;
+
+	outputs.timestamp = vehicle_actuator_setpoint.timestamp;
+	outputs.timestamp_sample = _timestamp_sample;
+	outputs.n_outputs = 0;
+
+	for (unsigned i = 0; i < NUM_ACTUATORS; i++) {
+		outputs.function[i] = output_control_s::FUNCTION_CA0 + i;
+		outputs.value[i] = vehicle_actuator_setpoint.actuator[i];
+		outputs.n_outputs++;
+	}
+
+	_output_control_pub.publish(outputs);
 }
 
 void

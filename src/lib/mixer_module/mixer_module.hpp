@@ -114,7 +114,7 @@ public:
 	 * @param ramp_up true if motor ramp up from disarmed to min upon arming is wanted
 	 */
 	MixingOutput(uint8_t max_num_outputs, OutputModuleInterface &interface, SchedulingPolicy scheduling_policy,
-		     bool support_esc_calibration, bool ramp_up = true, OutputControlInterface *ointerface = nullptr);
+		     bool support_esc_calibration, bool ramp_up = true); //, OutputControlInterface *ointerface = nullptr);
 
 	~MixingOutput();
 
@@ -170,6 +170,8 @@ public:
 	void setAllMinValues(uint16_t value);
 	void setAllMaxValues(uint16_t value);
 
+	uint16_t getAssignedFunction(int index) { return _assigned_function[index]; }
+
 	uint16_t &reverseOutputMask() { return _reverse_output_mask; }
 	uint16_t &failsafeValue(int index) { return _failsafe_value[index]; }
 	/** Disarmed values: disarmedValue < minValue needs to hold */
@@ -186,13 +188,28 @@ public:
 
 	void setIgnoreLockdown(bool ignore_lockdown) { _ignore_lockdown = ignore_lockdown; }
 
-protected:
 	void updateParams() override;
 
-	OutputControlInterface *_ointerface {nullptr};
+protected:
+
+	// OutputControlInterface *_ointerface {nullptr};
 
 private:
 	void handleCommands();
+
+	/**
+	 * Update per-output parameter values
+	 * Param names of the form <module_prefix>_<type><index>
+	 *   e.g. <PWM_MAIN>_<MIN>n
+	 */
+	void updateParamValues(const char *type, uint16_t values[MAX_ACTUATORS]);
+
+	void updateFailsafeValues();
+	void updateDisarmedValues();
+	void updateMinValues();
+	void updateMaxValues();
+	void updateTrimValues();
+	void updateReverseMask();
 
 	bool armNoThrottle() const
 	{
@@ -242,18 +259,25 @@ private:
 	uint16_t _disarmed_value[MAX_ACTUATORS] {};
 	uint16_t _min_value[MAX_ACTUATORS] {};
 	uint16_t _max_value[MAX_ACTUATORS] {};
+	uint16_t _trim_value[MAX_ACTUATORS] {};
+	float    _current_inputs[MAX_ACTUATORS] {}; ///< current set of inputs (controller or command outputs)
 	uint16_t _current_output_value[MAX_ACTUATORS] {}; ///< current output values (reordered)
 	uint16_t _reverse_output_mask{0}; ///< reverses the interval [min, max] -> [max, min], NOT motor direction
 	output_limit_t _output_limit;
 
 	uORB::Subscription _armed_sub{ORB_ID(actuator_armed)};
-	uORB::SubscriptionCallbackWorkItem _control_subs[actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS];
+	uORB::SubscriptionCallbackWorkItem _control_subs[actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS +
+									 output_control_s::NUM_OUTPUT_CONTROL_GROUPS];
 
 	uORB::PublicationMulti<actuator_outputs_s> _outputs_pub{ORB_ID(actuator_outputs)};
 	uORB::PublicationMulti<multirotor_motor_limits_s> _to_mixer_status{ORB_ID(multirotor_motor_limits)}; 	///< mixer status flags
 
 	actuator_controls_s _controls[actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS] {};
+	// output_controls_s _out_control[output_control_s::NUM_OUTPUT_CONTROL_GROUPS] {};
 	actuator_armed_s _armed{};
+
+	uint16_t _assigned_function[MAX_ACTUATORS] {}; ///< 'output_control' function assigned to every physical output
+	const char *_output_module_prefix; ///< The parameter-name prefix of the output module, e.g. 'PWM_MAIN'
 
 	hrt_abstime _time_last_dt_update_multicopter{0};
 	hrt_abstime _time_last_dt_update_simple_mixer{0};

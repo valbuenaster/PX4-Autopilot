@@ -46,7 +46,6 @@
 #include <lib/cdev/CDev.hpp>
 #include <lib/mathlib/mathlib.h>
 #include <lib/mixer_module/mixer_module.hpp>
-#include <lib/mixer_module/output_control.hpp>
 #include <lib/parameters/param.h>
 #include <lib/perf/perf_counter.h>
 #include <px4_platform_common/px4_config.h>
@@ -165,8 +164,7 @@ private:
 	static constexpr int FMU_MAX_ACTUATORS = DIRECT_PWM_OUTPUT_CHANNELS;
 	static_assert(FMU_MAX_ACTUATORS <= MAX_ACTUATORS, "Increase MAX_ACTUATORS if this fails");
 
-	OutputControl _output_control{FMU_MAX_ACTUATORS, *this, OutputControl::SchedulingPolicy::Auto, true};
-	MixingOutput _mixing_output{FMU_MAX_ACTUATORS, *this, MixingOutput::SchedulingPolicy::Auto, true, true, (OutputControlInterface *) &_output_control};
+	MixingOutput _mixing_output{FMU_MAX_ACTUATORS, *this, MixingOutput::SchedulingPolicy::Auto, true, true}; //, (OutputControlInterface *) &_output_control};
 
 	Mode		_mode{MODE_NONE};
 
@@ -183,9 +181,6 @@ private:
 	uORB::SubscriptionData<actuator_armed_s> _armed_sub{ORB_ID(actuator_armed)};
 	uORB::SubscriptionData<safety_s> _safety_sub{ORB_ID(safety)};
 
-	uORB::SubscriptionMultiArray<output_control_s> _output_control_subs{ORB_ID::output_control};
-	uint16_t _assigned_functions[FMU_MAX_ACTUATORS] {};
-
 	uORB::Publication<output_control_s> _output_control_mavlink_pub {ORB_ID(output_control_mavlink)};
 
 	unsigned	_num_outputs{0};
@@ -198,12 +193,7 @@ private:
 
 	unsigned	_num_disarmed_set{0};
 
-	bool		_legacy_mixer_mode{true};
-
-	uint16_t	_reverse_pwm_mask{0}; // Local version of legacy mixer variable
-	int16_t		_pwm_trim_values[FMU_MAX_ACTUATORS] {}; // Local version of legacy mixer variable
-	uint16_t	_output_values[FMU_MAX_ACTUATORS]; // The actual values output to the pins
-	void update_outputs();
+	bool		_legacy_mixer_mode{true}; ///< Mode switch on mixer-file vs. ControlAllocator output
 
 	perf_counter_t	_cycle_perf;
 	perf_counter_t	_interval_perf;

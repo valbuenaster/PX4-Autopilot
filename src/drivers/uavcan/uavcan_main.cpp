@@ -774,6 +774,8 @@ UavcanNode::Run()
 		br->update();
 	}
 
+	_mixing_interface.mixingOutput().updateSubscriptions(false, false);
+
 	node_spin_once(); // expected to be non-blocking
 
 	// Check arming state
@@ -974,10 +976,6 @@ UavcanNode::print_info()
 
 	printf("\n");
 
-	// ESC mixer status
-	_mixing_interface.mixingOutput().printStatus();
-
-	printf("\n");
 
 	// Sensor bridges
 	for (const auto &br : _sensor_bridges) {
@@ -998,6 +996,11 @@ UavcanNode::print_info()
 
 	perf_print_counter(_cycle_perf);
 	perf_print_counter(_interval_perf);
+
+	// ESC mixer status
+	_mixing_interface.mixingOutput().printStatus();
+
+	printf("\n");
 
 	(void)pthread_mutex_unlock(&_node_mutex);
 }

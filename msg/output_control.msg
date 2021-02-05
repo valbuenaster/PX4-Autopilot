@@ -2,11 +2,11 @@ uint64 timestamp		 # time since system start (microseconds)
 uint64 timestamp_sample	 # the timestamp the data this control response is based on was sampled
 
 uint8 NUM_OUTPUT_CONTROL_GROUPS = 4 # Max number of instances of this topic
-uint8 MAX_ACTUATORS = 8  # Max actuators available in a single topic publication
+uint8 MAX_ACTUATORS = 16  # Max actuators available in a single topic publication
 
 uint8 n_outputs
-uint16[8] function       # Actuator function being controlled
-float32[8] value         # Value being applied to each function
+uint16[16] function       # Actuator function being controlled
+float32[16] value         # Value being applied to each function
 
 # Actuator Function List
 uint16 FUNCTION_NONE = 0
