@@ -90,12 +90,10 @@ void RoverPositionControl::parameters_update(bool force)
 				   _param_speed_d.get(),
 				   _param_speed_imax.get(),
 				   _param_gndspeed_max.get());
-
-		// _rate_control.set_k_p(_param_rate_p.get());
-		// _rate_control.set_k_i(_param_rate_i.get());
-		// _rate_control.set_k_ff(_param_rate_ff.get());
-		// _rate_control.set_integrator_max(_param_rate_imax.get());
-		// _rate_control.set_max_rate(_param_rate_max.get());
+		_rate_control.setGains(matrix::Vector3f(0.0, 0.0, _param_rate_p.get()), matrix::Vector3f(0.0, 0.0, _param_rate_i.get()),
+				       matrix::Vector3f(0.0, 0.0, _param_rate_d.get()));
+		_rate_control.setFeedForwardGain(matrix::Vector3f(0.0, 0.0, _param_rate_ff.get()));
+		_rate_control.setIntegratorLimit(matrix::Vector3f(0.0, 0.0, _param_rate_imax.get()));
 	}
 }
 
@@ -383,19 +381,15 @@ void
 RoverPositionControl::control_rates(const vehicle_angular_velocity_s &rates, const matrix::Vector3f &current_velocity,
 				    const vehicle_rates_setpoint_s &rates_sp)
 {
-	// struct ECL_ControlData control_input = {};
-	// const float current_speed = current_velocity.norm();
+	bool lock_integrator = bool(current_velocity.norm() < _param_rate_i_minspeed.get());
+	const matrix::Vector3f vehicle_rates(rates.xyz[0], rates.xyz[1], rates.xyz[2]);
+	const matrix::Vector3f rates_setpoint(rates_sp.roll, rates_sp.pitch, rates_sp.yaw);
+	const matrix::Vector3f angular_acceleration(0.0, 0.0, 0.0);
+	const float dt = 0.1;
+	const matrix::Vector3f torque = _rate_control.update(vehicle_rates, rates_setpoint, angular_acceleration, dt,
+					lock_integrator);
 
-	// Set scaling factor with local velocity
-	// control_input.groundspeed = current_speed;
-	// // Lock integrator when local velocity is small
-	// control_input.lock_integrator = (current_speed < _param_rate_i_minspeed.get());
-
-	// control_input.body_z_rate = rates.xyz[2];
-	// _rate_control.set_bodyrate_setpoint(rates_sp.yaw);
-
-	float control_effort = 0.0f;
-	// float control_effort = _rate_control.control_bodyrate(control_input);
+	float control_effort = steering_input + torque(2);
 	control_effort = math::constrain(control_effort, -1.0f, 1.0f);
 
 	_act_controls.control[actuator_controls_s::INDEX_YAW] = control_effort;

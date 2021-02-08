@@ -312,6 +312,18 @@ PARAM_DEFINE_FLOAT(GND_RATE_P, 5.0f);
 PARAM_DEFINE_FLOAT(GND_RATE_I, 0.5f);
 
 /**
+ * Rover Rate Integral Gain
+ *
+ * @unit rad/s
+ * @min 0.0
+ * @max 1.0
+ * @decimal 3
+ * @increment 0.005
+ * @group Rover Position Control
+ */
+PARAM_DEFINE_FLOAT(GND_RATE_D, 0.0f);
+
+/**
  * Rover Rate Proportional Gain
  *
  * @unit rad/s

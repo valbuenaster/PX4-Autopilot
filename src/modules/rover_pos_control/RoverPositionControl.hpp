@@ -145,6 +145,7 @@ private:
 
 	ECL_L1_Pos_Controller				_gnd_control;
 	RoverRateControl				_rate_control;
+	float steering_input{0.0};
 
 	enum UGV_POSCTRL_MODE {
 		UGV_POSCTRL_MODE_AUTO,
@@ -177,6 +178,7 @@ private:
 
 		(ParamFloat<px4::params::GND_RATE_P>) _param_rate_p,
 		(ParamFloat<px4::params::GND_RATE_I>) _param_rate_i,
+		(ParamFloat<px4::params::GND_RATE_D>) _param_rate_d,
 		(ParamFloat<px4::params::GND_RATE_FF>) _param_rate_ff,
 		(ParamFloat<px4::params::GND_RATE_IMAX>) _param_rate_imax,
 		(ParamFloat<px4::params::GND_RATE_MAX>) _param_rate_max,

@@ -60,60 +60,6 @@ void RoverRateControl::setSaturationStatus(const MultirotorMixer::saturation_sta
 Vector3f RoverRateControl::update(const Vector3f &rate, const Vector3f &rate_sp, const Vector3f &angular_accel,
 				  const float dt, const bool landed)
 {
-	// /* Do not calculate control signal with bad inputs */
-	// if (!(PX4_ISFINITE(ctl_data.body_z_rate))) {
-
-	// 	return math::constrain(_last_output, -1.0f, 1.0f);
-	// }
-
-	// /* get the usual dt estimate */
-	// uint64_t dt_micros = hrt_elapsed_time(&_last_run);
-	// _last_run = hrt_absolute_time();
-	// float dt = (float)dt_micros * 1e-6f;
-
-	// /* lock integral for long intervals */
-	// bool lock_integrator = ctl_data.lock_integrator;
-
-	// if (dt_micros > 500000) {
-	// 	lock_integrator = true;
-	// }
-
-	// //TODO: Handle differential rover and ackerman differently
-	// // A. Integrator should not integrate if there is no groundspeed for ackerman
-	// // B. speed scaling should not be done in differential rovers
-
-	// //Only using vehicle kinematiccs, without considering tire slip
-
-	// /* Calculate body angular rate error */
-	// _rate_error = _bodyrate_setpoint - ctl_data.body_z_rate; // body angular rate error
-
-	// float scaler = math::max(ctl_data.groundspeed, 0.1f);
-
-	// if (!lock_integrator && _k_i > 0.0f) {
-
-	// 	float id = _rate_error * dt;
-
-	// 	/*
-	// 	 * anti-windup: do not allow integrator to increase if actuator is at limit
-	// 	 */
-	// 	if (_last_output < -1.0f) {
-	// 		/* only allow motion to center: increase value */
-	// 		id = math::max(id, 0.0f);
-
-	// 	} else if (_last_output > 1.0f) {
-	// 		/* only allow motion to center: decrease value */
-	// 		id = math::min(id, 0.0f);
-	// 	}
-
-	// 	/* add and constrain */
-	// 	_integrator = math::constrain(_integrator + id * _k_i, -_integrator_max, _integrator_max);
-	// }
-
-	// /* Apply PI rate controller and store non-limited output */
-	// _last_output = (_bodyrate_setpoint * _k_ff + _rate_error * _k_p) / scaler + _integrator;
-	// _last_output = math::constrain(_last_output, -1.0f, 1.0f);
-	// return _last_output;
-
 	// angular rates error
 	Vector3f rate_error = rate_sp - rate;
 
