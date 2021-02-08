@@ -470,8 +470,6 @@ RoverPositionControl::run()
 		/* update parameters from storage */
 		parameters_update();
 
-		bool manual_mode = _control_mode.flag_control_manual_enabled;
-
 		/* only run controller if position changed */
 		if (fds[0].revents & POLLIN || fds[4].revents & POLLIN) {
 			perf_begin(_loop_perf);
@@ -502,7 +500,7 @@ RoverPositionControl::run()
 			matrix::Vector2f current_position((float)_global_pos.lat, (float)_global_pos.lon);
 			matrix::Vector3f current_velocity(_local_pos.vx, _local_pos.vy, _local_pos.vz);
 
-			if (!manual_mode && _control_mode.flag_control_position_enabled) {
+			if (!_control_mode.flag_control_manual_enabled && _control_mode.flag_control_position_enabled) {
 
 				if (control_position(current_position, ground_speed, _pos_sp_triplet)) {
 
@@ -532,7 +530,7 @@ RoverPositionControl::run()
 
 				}
 
-			} else if (!manual_mode && _control_mode.flag_control_velocity_enabled) {
+			} else if (!_control_mode.flag_control_manual_enabled && _control_mode.flag_control_velocity_enabled) {
 
 				control_velocity(current_velocity, _pos_sp_triplet);
 
@@ -546,7 +544,7 @@ RoverPositionControl::run()
 
 			vehicle_attitude_poll();
 
-			if (manual_mode && _control_mode.flag_control_attitude_enabled
+			if (!_control_mode.flag_control_manual_enabled && _control_mode.flag_control_attitude_enabled
 			    && !_control_mode.flag_control_position_enabled
 			    && !_control_mode.flag_control_velocity_enabled) {
 				control_attitude(_vehicle_att, _att_sp);
@@ -558,7 +556,7 @@ RoverPositionControl::run()
 		if (fds[5].revents & POLLIN) {
 			vehicle_angular_velocity_poll();
 
-			if (!manual_mode && _control_mode.flag_control_rates_enabled
+			if (!_control_mode.flag_control_manual_enabled && _control_mode.flag_control_rates_enabled
 			    && !_control_mode.flag_control_attitude_enabled
 			    && !_control_mode.flag_control_position_enabled
 			    && !_control_mode.flag_control_velocity_enabled) {
@@ -576,7 +574,7 @@ RoverPositionControl::run()
 			// returning immediately and this loop will eat up resources.
 			orb_copy(ORB_ID(manual_control_setpoint), _manual_control_setpoint_sub, &_manual_control_setpoint);
 
-			if (manual_mode) {
+			if (_control_mode.flag_control_manual_enabled) {
 				/* manual/direct control */
 				//PX4_INFO("Manual mode!");
 				_act_controls.control[actuator_controls_s::INDEX_ROLL] = _manual_control_setpoint.y;
@@ -598,7 +596,7 @@ RoverPositionControl::run()
 			    _control_mode.flag_control_attitude_enabled ||
 			    _control_mode.flag_control_position_enabled ||
 			    _control_mode.flag_control_rates_enabled ||
-			    manual_mode) {
+			    _control_mode.flag_control_manual_enabled) {
 				/* publish the actuator controls */
 				_actuator_controls_pub.publish(_act_controls);
 			}
