@@ -131,6 +131,11 @@ CONFIG:
       buildType: MinSizeRel
       settings:
         CONFIG: mro_ctrl-zero-f7_default
+    mro_ctrl-zero-h7_default:
+      short: mro_ctrl-zero-h7
+      buildType: MinSizeRel
+      settings:
+        CONFIG: mro_ctrl-zero-h7_default
     mro_x21-777_default:
       short: mro_x2.1-777
       buildType: MinSizeRel
