@@ -79,9 +79,7 @@
 
 pthread_mutex_t mavlink_module_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static constexpr int MAVLINK_MAX_INSTANCES{4};
-
-Mavlink *mavlink_module_instances[MAVLINK_MAX_INSTANCES] {};
+Mavlink *mavlink_module_instances[MAVLINK_COMM_NUM_BUFFERS] {};
 
 void mavlink_send_uart_bytes(mavlink_channel_t chan, const uint8_t *ch, int length) { mavlink_module_instances[chan]->send_bytes(ch, length); }
 void mavlink_start_uart_send(mavlink_channel_t chan, int length) { mavlink_module_instances[chan]->send_start(length); }
@@ -223,7 +221,7 @@ Mavlink::set_instance_id()
 {
 	LockGuard lg{mavlink_module_mutex};
 
-	for (int instance_id = 0; instance_id < MAVLINK_MAX_INSTANCES; instance_id++) {
+	for (int instance_id = 0; instance_id < MAVLINK_COMM_NUM_BUFFERS; instance_id++) {
 		if (mavlink_module_instances[instance_id] == nullptr) {
 			mavlink_module_instances[instance_id] = this;
 			_instance_id = instance_id;
@@ -2637,8 +2635,8 @@ Mavlink::start(int argc, char *argv[])
 	// before returning to the shell
 	int ic = Mavlink::instance_count();
 
-	if (ic == MAVLINK_MAX_INSTANCES) {
-		PX4_ERR("Maximum MAVLink instance count of %d reached.", MAVLINK_MAX_INSTANCES);
+	if (ic == MAVLINK_COMM_NUM_BUFFERS) {
+		PX4_ERR("Maximum MAVLink instance count of %d reached.", MAVLINK_COMM_NUM_BUFFERS);
 		return 1;
 	}
 
