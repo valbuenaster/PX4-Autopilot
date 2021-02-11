@@ -852,6 +852,62 @@ Commander::handle_command(const vehicle_command_s &cmd)
 		}
 		break;
 
+	case vehicle_command_s::VEHICLE_CMD_DO_SET_ACTUATOR: {
+
+			if (cmd.param7 > 0) {
+				// Param 7 doesn't make any sense if non-zero
+				cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_TEMPORARILY_REJECTED;
+				break;
+			}
+
+			output_control_s controls {};
+			controls.timestamp = hrt_absolute_time();
+			unsigned cnt = 0;
+
+			if (PX4_ISFINITE(cmd.param1)) {
+				controls.function[cnt] = output_control_s::FUNCTION_MAVLINK_SERVO0;
+				controls.value[cnt] = cmd.param1;
+				cnt++;
+			}
+
+			if (PX4_ISFINITE(cmd.param2)) {
+				controls.function[cnt] = output_control_s::FUNCTION_MAVLINK_SERVO1;
+				controls.value[cnt] = cmd.param2;
+				cnt++;
+			}
+
+			if (PX4_ISFINITE(cmd.param3)) {
+				controls.function[cnt] = output_control_s::FUNCTION_MAVLINK_SERVO2;
+				controls.value[cnt] = cmd.param3;
+				cnt++;
+			}
+
+			if (PX4_ISFINITE(cmd.param4)) {
+				controls.function[cnt] = output_control_s::FUNCTION_MAVLINK_SERVO3;
+				controls.value[cnt] = cmd.param4;
+				cnt++;
+			}
+
+			if (PX4_ISFINITE(cmd.param5)) {
+				controls.function[cnt] = output_control_s::FUNCTION_MAVLINK_SERVO4;
+				controls.value[cnt] = cmd.param5;
+				cnt++;
+			}
+
+			if (PX4_ISFINITE(cmd.param6)) {
+				controls.function[cnt] = output_control_s::FUNCTION_MAVLINK_SERVO5;
+				controls.value[cnt] = cmd.param6;
+				cnt++;
+			}
+
+			controls.n_outputs = cnt;
+
+			_output_control_pub.publish(controls);
+
+			cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
+		}
+		break;
+
 	case vehicle_command_s::VEHICLE_CMD_NAV_GUIDED_ENABLE: {
 			transition_result_t res = TRANSITION_DENIED;
 

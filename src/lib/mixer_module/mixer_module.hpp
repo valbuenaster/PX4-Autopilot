@@ -114,7 +114,7 @@ public:
 	 * @param ramp_up true if motor ramp up from disarmed to min upon arming is wanted
 	 */
 	MixingOutput(uint8_t max_num_outputs, OutputModuleInterface &interface, SchedulingPolicy scheduling_policy,
-		     bool support_esc_calibration, bool ramp_up = true); //, OutputControlInterface *ointerface = nullptr);
+		     bool support_esc_calibration, bool ramp_up = true);
 
 	~MixingOutput();
 
