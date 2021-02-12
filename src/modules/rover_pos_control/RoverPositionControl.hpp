@@ -102,14 +102,14 @@ private:
 	uORB::Publication<position_controller_status_s>	_pos_ctrl_status_pub{ORB_ID(position_controller_status)};  /**< navigation capabilities publication */
 	uORB::Publication<actuator_controls_s>		_actuator_controls_pub{ORB_ID(actuator_controls_0)};  /**< actuator controls publication */
 
-	int		_control_mode_sub{-1};		/**< control mode subscription */
-	int		_global_pos_sub{-1};
-	int		_local_pos_sub{-1};
-	int		_manual_control_setpoint_sub{-1};		/**< notification of manual control updates */
-	int		_pos_sp_triplet_sub{-1};
-	int		_att_sp_sub{-1};
-	int		_vehicle_attitude_sub{-1};
-	int		_sensor_combined_sub{-1};
+	uORB::Subscription _control_mode_sub{ORB_ID(vehicle_control_mode)}; /**< control mode subscription */
+	uORB::Subscription _global_pos_sub{ORB_ID(vehicle_global_position)};
+	uORB::Subscription _local_pos_sub{ORB_ID(vehicle_local_position)};
+	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)}; /**< notification of manual control updates */
+	uORB::Subscription _pos_sp_triplet_sub{ORB_ID(position_setpoint_triplet)};
+	uORB::Subscription _att_sp_sub{ORB_ID(vehicle_attitude_setpoint)};
+	uORB::Subscription _vehicle_attitude_sub{ORB_ID(position_setpoint_triplet)};
+	uORB::Subscription _sensor_combined_sub{ORB_ID(sensor_combined)};
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
