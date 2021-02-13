@@ -57,7 +57,7 @@ set SDCARD_MIXERS_PATH /fs/microsd/etc/mixers
 set STARTUP_TUNE 1
 set USE_IO no
 set VEHICLE_TYPE none
-
+set CUSTOM_ENABLE_PARAMETER none
 # Airframe parameter versioning: airframe maintainers can set this in the
 # airframe startup script, and then increase it by one whenever an airframe
 # parameter is updated - it will ensure that these parameters will be updated
@@ -506,10 +506,14 @@ else
 		reboot
 	fi
 
+
+
 #
 # End of autostart.
 #
+
 fi
+
 
 #
 # Unset all script parameters to free RAM.
@@ -552,7 +556,7 @@ unset SDCARD_MIXERS_PATH
 unset STARTUP_TUNE
 unset USE_IO
 unset VEHICLE_TYPE
-
+unset CUSTOM_ENABLE_PARAMETER
 #
 # Boot is complete, inform MAVLink app(s) that the system is now fully up and running.
 #

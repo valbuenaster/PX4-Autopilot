@@ -8,6 +8,9 @@
 #
 # Fixed wing setup.
 #
+
+set CUSTOM_ENABLE_PARAMETER yes
+
 if [ $VEHICLE_TYPE = fw ]
 then
 	if [ $MIXER = none ]
@@ -154,4 +157,17 @@ if [ $VEHICLE_TYPE = none ]
 then
 	echo "No autostart ID found"
 	ekf2 start
+fi
+
+#echo "VEHICLE_TYPE " $VEHICLE_TYPE
+#echo "CUSTOM_ENABLE_PARAMETER" $CUSTOM_ENABLE_PARAMETER
+
+if [ $CUSTOM_ENABLE_PARAMETER = no ]
+then
+    echo "No integrated_accel from boot"
+fi
+if [ $CUSTOM_ENABLE_PARAMETER = yes ]
+then
+    echo "integrated_accel starts from boot"
+    integrated_accel start
 fi
