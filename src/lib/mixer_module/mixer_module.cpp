@@ -136,7 +136,7 @@ void MixingOutput::updateParams()
 	/// TODO: Do we need any sort of mode switch?  Disable use of mixers, perhaps?
 
 	updateParamValues("FUNC", _assigned_function);
-	updateParamValues("FAIL", _failsafe_value);
+	updateFailsafeValues();
 	updateDisarmedValues();
 	updateMinValues();
 	updateMaxValues();
@@ -829,8 +829,17 @@ void MixingOutput::updateParamValues(const char *type, uint16_t values[MAX_ACTUA
 
 void MixingOutput::updateFailsafeValues()
 {
+	int32_t default_fail = 0;
+	char pname[16];
+	sprintf(pname, "%s_FAIL", _output_module_prefix);
+	param_t def_param_h = param_find(pname);
+
+	if (def_param_h != PARAM_INVALID) {
+		param_get(def_param_h, &default_fail);
+	}
+
 	for (unsigned i = 0; i < _max_num_outputs; i++) {
-		char pname[16];
+		_failsafe_value[i] = default_fail;
 
 		/* fill the struct from parameters */
 		sprintf(pname, "%s_FAIL%d", _output_module_prefix, i + 1);
@@ -839,6 +848,12 @@ void MixingOutput::updateFailsafeValues()
 		if (param_h != PARAM_INVALID) {
 			int32_t pval = 0;
 			param_get(param_h, &pval);
+
+			if (pval < 0) {
+				// In the default case of -1, use default value
+				pval = default_fail;
+			}
+
 			_failsafe_value[i] = (uint16_t)pval;
 			PX4_DEBUG("%s: %d", pname, _failsafe_value[i]);
 		}
@@ -847,11 +862,17 @@ void MixingOutput::updateFailsafeValues()
 
 void MixingOutput::updateDisarmedValues()
 {
-	int32_t default_dis;
-	param_get(param_find("PWM_DISARMED"), &default_dis); /// TODO: This needs to be per-instance; i.e. different for UAVCAN
+	int32_t default_dis = 0;
+	char pname[16];
+	sprintf(pname, "%s_DIS", _output_module_prefix);
+	param_t def_param_h = param_find(pname);
+
+	if (def_param_h != PARAM_INVALID) {
+		param_get(def_param_h, &default_dis);
+	}
 
 	for (unsigned i = 0; i < _max_num_outputs; i++) {
-		char pname[16];
+		_disarmed_value[i] = default_dis;
 
 		/* fill the struct from parameters */
 		sprintf(pname, "%s_DIS%d", _output_module_prefix, i + 1);
@@ -862,8 +883,7 @@ void MixingOutput::updateDisarmedValues()
 			param_get(param_h, &pval);
 
 			if (pval < 0) {
-				// In the case of the default -1, use PWM_DISARMED
-				//PX4_DEBUG("%d: Defaulting to PWM_DISARMED %d", i, default_dis);
+				// In the default case of -1, use default value
 				pval = default_dis;
 			}
 
@@ -875,11 +895,17 @@ void MixingOutput::updateDisarmedValues()
 
 void MixingOutput::updateMinValues()
 {
-	int32_t default_min;
-	param_get(param_find("PWM_MIN"), &default_min); /// TODO: This needs to be per-instance; i.e. different for UAVCAN
+	int32_t default_min = 0;
+	char pname[16];
+	sprintf(pname, "%s_MIN", _output_module_prefix);
+	param_t def_param_h = param_find(pname);
+
+	if (def_param_h != PARAM_INVALID) {
+		param_get(def_param_h, &default_min);
+	}
 
 	for (unsigned i = 0; i < _max_num_outputs; i++) {
-		char pname[16];
+		_min_value[i] = default_min;
 
 		/* fill the struct from parameters */
 		sprintf(pname, "%s_MIN%d", _output_module_prefix, i + 1);
@@ -890,8 +916,7 @@ void MixingOutput::updateMinValues()
 			param_get(param_h, &pval);
 
 			if (pval < 0) {
-				// In the case of the default -1, use PWM_MIN
-				PX4_DEBUG("%d: Defaulting to PWM_MIN %d", i, default_min);
+				// In the default case of -1, use default value
 				pval = default_min;
 			}
 
@@ -903,11 +928,17 @@ void MixingOutput::updateMinValues()
 
 void MixingOutput::updateMaxValues()
 {
-	int32_t default_max;
-	param_get(param_find("PWM_MAX"), &default_max); /// TODO: This needs to be per-instance; i.e. different for UAVCAN
+	int32_t default_max = 2000;
+	char pname[16];
+	sprintf(pname, "%s_MAX", _output_module_prefix);
+	param_t def_param_h = param_find(pname);
+
+	if (def_param_h == PARAM_INVALID) {
+		param_get(def_param_h, &default_max);
+	}
 
 	for (unsigned i = 0; i < _max_num_outputs; i++) {
-		char pname[16];
+		_max_value[i] = default_max;
 
 		/* fill the struct from parameters */
 		sprintf(pname, "%s_MAX%d", _output_module_prefix, i + 1);
@@ -918,7 +949,7 @@ void MixingOutput::updateMaxValues()
 			param_get(param_h, &pval);
 
 			if (pval < 0) {
-				// In the case of the default -1, use PWM_MAX
+				// In the default case of -1, use default value
 				pval = default_max;
 			}
 
@@ -931,9 +962,10 @@ void MixingOutput::updateMaxValues()
 void MixingOutput::updateTrimValues()
 {
 	for (unsigned i = 0; i < _max_num_outputs; i++) {
-		char pname[16];
+		_trim_value[i] = 0;
 
 		/* fill the struct from parameters */
+		char pname[16];
 		sprintf(pname, "%s_TRIM%d", _output_module_prefix, i + 1);
 		param_t param_h = param_find(pname);
 
