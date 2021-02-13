@@ -194,8 +194,9 @@ PARAM_DEFINE_INT32(UAVCAN_LGT_NAV, 3);
  */
 PARAM_DEFINE_INT32(UAVCAN_LGT_LAND, 0);
 
-
-
+/******************************************************************************
+*                                 CAN_ACT_FUNC                                *
+******************************************************************************/
 /**
  * Actuator function assigned to CAN1
  * See output_control FUNCTION values
@@ -296,15 +297,26 @@ PARAM_DEFINE_INT32(CAN_ACT_FUNC8, 0);
 *                                 CAN_ACT_MIN                                *
 ******************************************************************************/
 /**
+ * Set the default MIN output value
+ *
+ * @reboot_required false
+ *
+ * @min -8191
+ * @max 8191
+ * @group PWM Outputs
+ */
+PARAM_DEFINE_INT32(CAN_ACT_MIN, 1);
+
+/**
  * Set the min PWM value for the main 1 output
  *
  * This is the minimum PWM pulse the autopilot is allowed to output.
  * When set to -1 the value for PWM_MIN will be used
  *
- * @reboot_required true
+ * @reboot_required false
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -318,8 +330,8 @@ PARAM_DEFINE_INT32(CAN_ACT_MIN1, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -333,8 +345,8 @@ PARAM_DEFINE_INT32(CAN_ACT_MIN2, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -348,8 +360,8 @@ PARAM_DEFINE_INT32(CAN_ACT_MIN3, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -363,8 +375,8 @@ PARAM_DEFINE_INT32(CAN_ACT_MIN4, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -378,8 +390,8 @@ PARAM_DEFINE_INT32(CAN_ACT_MIN5, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -393,8 +405,8 @@ PARAM_DEFINE_INT32(CAN_ACT_MIN6, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -408,8 +420,8 @@ PARAM_DEFINE_INT32(CAN_ACT_MIN7, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -419,6 +431,17 @@ PARAM_DEFINE_INT32(CAN_ACT_MIN8, -1);
 *                                 CAN_ACT_MAX                                *
 ******************************************************************************/
 /**
+ * Set the default MAX output value
+ *
+ * @reboot_required false
+ *
+ * @min -8191
+ * @max 8191
+ * @group PWM Outputs
+ */
+PARAM_DEFINE_INT32(CAN_ACT_MAX, 8191);
+
+/**
  * Set the max PWM value for the main 1 output
  *
  * This is the maximum PWM pulse the autopilot is allowed to output.
@@ -426,8 +449,8 @@ PARAM_DEFINE_INT32(CAN_ACT_MIN8, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -441,8 +464,8 @@ PARAM_DEFINE_INT32(CAN_ACT_MAX1, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -456,8 +479,8 @@ PARAM_DEFINE_INT32(CAN_ACT_MAX2, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -471,8 +494,8 @@ PARAM_DEFINE_INT32(CAN_ACT_MAX3, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -486,8 +509,8 @@ PARAM_DEFINE_INT32(CAN_ACT_MAX4, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -501,8 +524,8 @@ PARAM_DEFINE_INT32(CAN_ACT_MAX5, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -516,8 +539,8 @@ PARAM_DEFINE_INT32(CAN_ACT_MAX6, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -531,8 +554,8 @@ PARAM_DEFINE_INT32(CAN_ACT_MAX7, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -541,6 +564,16 @@ PARAM_DEFINE_INT32(CAN_ACT_MAX8, -1);
 /******************************************************************************
 *                                CAN_ACT_FAIL                                *
 ******************************************************************************/
+/**
+ * Set the default FAILSAFE output value
+ *
+ * @reboot_required false
+ *
+ * @min -8191
+ * @max 8191
+ * @group PWM Outputs
+ */
+PARAM_DEFINE_INT32(CAN_ACT_FAIL, 0);
 
 /**
  * Set the failsafe PWM for the main 1 output
@@ -551,8 +584,8 @@ PARAM_DEFINE_INT32(CAN_ACT_MAX8, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -567,8 +600,8 @@ PARAM_DEFINE_INT32(CAN_ACT_FAIL1, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -583,8 +616,8 @@ PARAM_DEFINE_INT32(CAN_ACT_FAIL2, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -599,8 +632,8 @@ PARAM_DEFINE_INT32(CAN_ACT_FAIL3, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -615,8 +648,8 @@ PARAM_DEFINE_INT32(CAN_ACT_FAIL4, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -631,8 +664,8 @@ PARAM_DEFINE_INT32(CAN_ACT_FAIL5, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -647,8 +680,8 @@ PARAM_DEFINE_INT32(CAN_ACT_FAIL6, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -663,8 +696,8 @@ PARAM_DEFINE_INT32(CAN_ACT_FAIL7, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -673,6 +706,16 @@ PARAM_DEFINE_INT32(CAN_ACT_FAIL8, -1);
 /******************************************************************************
 *                                CAN_ACT_DIS                                 *
 ******************************************************************************/
+/**
+ * Set the default DISARMED output value
+ *
+ * @reboot_required false
+ *
+ * @min -8191
+ * @max 8191
+ * @group PWM Outputs
+ */
+PARAM_DEFINE_INT32(CAN_ACT_DIS, 0);
 
 /**
  * Set the disarmed PWM for the main 1 output
@@ -682,8 +725,8 @@ PARAM_DEFINE_INT32(CAN_ACT_FAIL8, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -697,8 +740,8 @@ PARAM_DEFINE_INT32(CAN_ACT_DIS1, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -712,8 +755,8 @@ PARAM_DEFINE_INT32(CAN_ACT_DIS2, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -727,8 +770,8 @@ PARAM_DEFINE_INT32(CAN_ACT_DIS3, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -742,8 +785,8 @@ PARAM_DEFINE_INT32(CAN_ACT_DIS4, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -757,8 +800,8 @@ PARAM_DEFINE_INT32(CAN_ACT_DIS5, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -772,8 +815,8 @@ PARAM_DEFINE_INT32(CAN_ACT_DIS6, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
@@ -787,8 +830,8 @@ PARAM_DEFINE_INT32(CAN_ACT_DIS7, -1);
  *
  * @reboot_required true
  *
- * @min -1
- * @max 2200
+ * @min -8191
+ * @max 8191
  * @unit us
  * @group PWM Outputs
  */
