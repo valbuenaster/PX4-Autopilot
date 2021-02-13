@@ -64,8 +64,14 @@ static constexpr wq_config_t I2C4{"wq:I2C4", 1250, -10};
 
 static constexpr wq_config_t att_pos_ctrl{"wq:att_pos_ctrl", 6600, -11}; // PX4 att/pos controllers, highest priority after sensors
 
+/*ORIGINAL
 static constexpr wq_config_t hp_default{"wq:hp_default", 1600, -12};
 static constexpr wq_config_t lp_default{"wq:lp_default", 1700, -50};
+**ORIGINAL*/
+
+static constexpr wq_config_t integrated_accel{"wq:integrated_accel",6600,-12}; // LINE THAT I INTRODUCED
+static constexpr wq_config_t hp_default{"wq:hp_default", 1600, -13};
+static constexpr wq_config_t lp_default{"wq:lp_default", 1700, -51};
 
 static constexpr wq_config_t test1{"wq:test1", 800, 0};
 static constexpr wq_config_t test2{"wq:test2", 800, 0};
