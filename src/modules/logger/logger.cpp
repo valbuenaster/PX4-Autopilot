@@ -48,6 +48,7 @@
 #include <uORB/uORBTopics.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/vehicle_command_ack.h>
+#include <uORB/topics/integrated_accel.h>
 
 #include <drivers/drv_hrt.h>
 #include <mathlib/math/Limits.hpp>
@@ -550,6 +551,8 @@ void Logger::add_default_topics()
 	add_topic("vehicle_status", 200);
 	add_topic("vehicle_status_flags");
 	add_topic("vtol_vehicle_status", 200);
+
+    add_topic("integrated_accel", 100);
 
 	add_topic_multi("actuator_outputs", 100);
 	add_topic_multi("battery_status", 500);
