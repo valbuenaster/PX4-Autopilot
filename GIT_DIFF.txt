@@ -1,0 +1,771 @@
+[1mdiff --git a/ROMFS/px4fmu_common/init.d/rc.vehicle_setup b/ROMFS/px4fmu_common/init.d/rc.vehicle_setup[m
+[1mindex 20a60edf1b..9c5bc52b7d 100644[m
+[1m--- a/ROMFS/px4fmu_common/init.d/rc.vehicle_setup[m
+[1m+++ b/ROMFS/px4fmu_common/init.d/rc.vehicle_setup[m
+[36m@@ -8,6 +8,9 @@[m
+ #[m
+ # Fixed wing setup.[m
+ #[m
+[32m+[m
+[32m+[m[32mset CUSTOM_ENABLE_PARAMETER yes[m
+[32m+[m
+ if [ $VEHICLE_TYPE = fw ][m
+ then[m
+ 	if [ $MIXER = none ][m
+[36m@@ -155,3 +158,16 @@[m [mthen[m
+ 	echo "No autostart ID found"[m
+ 	ekf2 start[m
+ fi[m
+[32m+[m
+[32m+[m[32m#echo "VEHICLE_TYPE " $VEHICLE_TYPE[m
+[32m+[m[32m#echo "CUSTOM_ENABLE_PARAMETER" $CUSTOM_ENABLE_PARAMETER[m
+[32m+[m
+[32m+[m[32mif [ $CUSTOM_ENABLE_PARAMETER = no ][m
+[32m+[m[32mthen[m
+[32m+[m[32m    echo "No integrated_accel from boot"[m
+[32m+[m[32mfi[m
+[32m+[m[32mif [ $CUSTOM_ENABLE_PARAMETER = yes ][m
+[32m+[m[32mthen[m
+[32m+[m[32m    echo "integrated_accel starts from boot"[m
+[32m+[m[32m    integrated_accel start[m
+[32m+[m[32mfi[m
+[1mdiff --git a/ROMFS/px4fmu_common/init.d/rcS b/ROMFS/px4fmu_common/init.d/rcS[m
+[1mindex ffa1bc96db..c5ad3ef700 100644[m
+[1m--- a/ROMFS/px4fmu_common/init.d/rcS[m
+[1m+++ b/ROMFS/px4fmu_common/init.d/rcS[m
+[36m@@ -57,7 +57,7 @@[m [mset SDCARD_MIXERS_PATH /fs/microsd/etc/mixers[m
+ set STARTUP_TUNE 1[m
+ set USE_IO no[m
+ set VEHICLE_TYPE none[m
+[31m-[m
+[32m+[m[32mset CUSTOM_ENABLE_PARAMETER none[m
+ # Airframe parameter versioning: airframe maintainers can set this in the[m
+ # airframe startup script, and then increase it by one whenever an airframe[m
+ # parameter is updated - it will ensure that these parameters will be updated[m
+[36m@@ -506,11 +506,15 @@[m [melse[m
+ 		reboot[m
+ 	fi[m
+ [m
+[32m+[m
+[32m+[m
+ #[m
+ # End of autostart.[m
+ #[m
+[32m+[m
+ fi[m
+ [m
+[32m+[m
+ #[m
+ # Unset all script parameters to free RAM.[m
+ #[m
+[36m@@ -552,7 +556,7 @@[m [munset SDCARD_MIXERS_PATH[m
+ unset STARTUP_TUNE[m
+ unset USE_IO[m
+ unset VEHICLE_TYPE[m
+[31m-[m
+[32m+[m[32munset CUSTOM_ENABLE_PARAMETER[m
+ #[m
+ # Boot is complete, inform MAVLink app(s) that the system is now fully up and running.[m
+ #[m
+[1mdiff --git a/boards/px4/sitl/default.cmake b/boards/px4/sitl/default.cmake[m
+[1mindex 8cade4ed94..cc78f22de6 100644[m
+[1m--- a/boards/px4/sitl/default.cmake[m
+[1m+++ b/boards/px4/sitl/default.cmake[m
+[36m@@ -26,6 +26,7 @@[m [mpx4_add_board([m
+ 		commander[m
+ 		dataman[m
+ 		ekf2[m
+[32m+[m[32m                integrated_accel[m
+ 		events[m
+ 		fw_att_control[m
+ 		fw_pos_control_l1[m
+[36m@@ -80,6 +81,7 @@[m [mpx4_add_board([m
+ 		#hwtest # Hardware test[m
+ 		px4_mavlink_debug # Tutorial code from http://dev.px4.io/en/debug/debug_values.html[m
+ 		px4_simple_app # Tutorial code from http://dev.px4.io/en/apps/hello_sky.html[m
+[32m+[m[32m        px4_simple_App_Luis[m
+ 		rover_steering_control # Rover example app[m
+ 	)[m
+ [m
+[1mdiff --git a/msg/CMakeLists.txt b/msg/CMakeLists.txt[m
+[1mindex 0542639650..e291e1685e 100644[m
+[1m--- a/msg/CMakeLists.txt[m
+[1m+++ b/msg/CMakeLists.txt[m
+[36m@@ -65,6 +65,7 @@[m [mset(msg_files[m
+ 	gps_inject_data.msg[m
+ 	home_position.msg[m
+ 	input_rc.msg[m
+[32m+[m[32m        integrated_accel.msg[m
+ 	iridiumsbd_status.msg[m
+ 	irlock_report.msg[m
+ 	landing_gear.msg[m
+[1mdiff --git a/msg/integrated_accel.msg b/msg/integrated_accel.msg[m
+[1mnew file mode 100644[m
+[1mindex 0000000000..dbefc86137[m
+[1m--- /dev/null[m
+[1m+++ b/msg/integrated_accel.msg[m
+[36m@@ -0,0 +1,11 @@[m
+[32m+[m[32muint64 timestamp	# time since system start (microseconds)[m
+[32m+[m
+[32m+[m[32mfloat32 integrated_x		# rough integration of the acceleration in the NED X board axis in m/s[m
+[32m+[m[32mfloat32 integrated_y		# rough integration of the acceleration in the NED Y board axis in m/s[m
+[32m+[m[32mfloat32 integrated_z		# rough integration of the acceleration in the NED Z board axis in m/s[m
+[32m+[m
+[32m+[m[32muint32 integral_dt	# integration time  (microseconds)[m
+[32m+[m
+[32m+[m[32mbool armed  # armed status flag[m
+[32m+[m
+[32m+[m[32m# TOPICS integrated_accel[m
+[1mdiff --git a/platforms/common/include/px4_platform_common/px4_work_queue/WorkQueueManager.hpp b/platforms/common/include/px4_platform_common/px4_work_queue/WorkQueueManager.hpp[m
+[1mindex 5eae114136..435cead943 100644[m
+[1m--- a/platforms/common/include/px4_platform_common/px4_work_queue/WorkQueueManager.hpp[m
+[1m+++ b/platforms/common/include/px4_platform_common/px4_work_queue/WorkQueueManager.hpp[m
+[36m@@ -62,10 +62,18 @@[m [mstatic constexpr wq_config_t I2C2{"wq:I2C2", 1250, -8};[m
+ static constexpr wq_config_t I2C3{"wq:I2C3", 1250, -9};[m
+ static constexpr wq_config_t I2C4{"wq:I2C4", 1250, -10};[m
+ [m
+[32m+[m[32mstatic constexpr wq_config_t integrated_accel{"wq:integrated_accel",6600,-20}; // LINE THAT I INTRODUCED[m
+ static constexpr wq_config_t att_pos_ctrl{"wq:att_pos_ctrl", 6600, -11}; // PX4 att/pos controllers, highest priority after sensors[m
+ [m
+[32m+[m[32m/*ORIGINAL[m
+[32m+[m[32mstatic constexpr wq_config_t att_pos_ctrl{"wq:att_pos_ctrl", 6600, -11}; // PX4 att/pos controllers, highest priority after sensors[m
+ static constexpr wq_config_t hp_default{"wq:hp_default", 1600, -12};[m
+ static constexpr wq_config_t lp_default{"wq:lp_default", 1700, -50};[m
+[32m+[m[32m**ORIGINAL*/[m
+[32m+[m
+[32m+[m
+[32m+[m[32mstatic constexpr wq_config_t hp_default{"wq:hp_default", 1600, -13};[m
+[32m+[m[32mstatic constexpr wq_config_t lp_default{"wq:lp_default", 1700, -51};[m
+ [m
+ static constexpr wq_config_t test1{"wq:test1", 800, 0};[m
+ static constexpr wq_config_t test2{"wq:test2", 800, 0};[m
+[1mdiff --git a/src/examples/px4_simple_App_Luis/CMakeLists.txt b/src/examples/px4_simple_App_Luis/CMakeLists.txt[m
+[1mnew file mode 100644[m
+[1mindex 0000000000..ad798e6bf3[m
+[1m--- /dev/null[m
+[1m+++ b/src/examples/px4_simple_App_Luis/CMakeLists.txt[m
+[36m@@ -0,0 +1,41 @@[m
+[32m+[m[32m############################################################################[m
+[32m+[m[32m#[m
+[32m+[m[32m#   Copyright (c) 2015 PX4 Development Team. All rights reserved.[m
+[32m+[m[32m#[m
+[32m+[m[32m# Redistribution and use in source and binary forms, with or without[m
+[32m+[m[32m# modification, are permitted provided that the following conditions[m
+[32m+[m[32m# are met:[m
+[32m+[m[32m#[m
+[32m+[m[32m# 1. Redistributions of source code must retain the above copyright[m
+[32m+[m[32m#    notice, this list of conditions and the following disclaimer.[m
+[32m+[m[32m# 2. Redistributions in binary form must reproduce the above copyright[m
+[32m+[m[32m#    notice, this list of conditions and the following disclaimer in[m
+[32m+[m[32m#    the documentation and/or other materials provided with the[m
+[32m+[m[32m#    distribution.[m
+[32m+[m[32m# 3. Neither the name PX4 nor the names of its contributors may be[m
+[32m+[m[32m#    used to endorse or promote products derived from this software[m
+[32m+[m[32m#    without specific prior written permission.[m
+[32m+[m[32m#[m
+[32m+[m[32m# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS[m
+[32m+[m[32m# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT[m
+[32m+[m[32m# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS[m
+[32m+[m[32m# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE[m
+[32m+[m[32m# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,[m
+[32m+[m[32m# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,[m
+[32m+[m[32m# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS[m
+[32m+[m[32m# OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED[m
+[32m+[m[32m# AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT[m
+[32m+[m[32m# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN[m
+[32m+[m[32m# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE[m
+[32m+[m[32m# POSSIBILITY OF SUCH DAMAGE.[m
+[32m+[m[32m#[m
+[32m+[m[32m############################################################################[m
+[32m+[m[32mpx4_add_module([m
+[32m+[m	[32mMODULE examples__px4_simple_App_Luis[m
+[32m+[m	[32mMAIN px4_simple_App_Luis[m
+[32m+[m	[32mSTACK_MAIN 2000[m
+[32m+[m	[32mSRCS[m
+[32m+[m		[32mpx4_simple_App_Luis.c[m
+[32m+[m	[32mDEPENDS[m
+[32m+[m	[32m)[m
+[32m+[m
+[1mdiff --git a/src/examples/px4_simple_App_Luis/px4_simple_App_Luis.c b/src/examples/px4_simple_App_Luis/px4_simple_App_Luis.c[m
+[1mnew file mode 100644[m
+[1mindex 0000000000..093f9856fc[m
+[1m--- /dev/null[m
+[1m+++ b/src/examples/px4_simple_App_Luis/px4_simple_App_Luis.c[m
+[36m@@ -0,0 +1,183 @@[m
+[32m+[m[32m/****************************************************************************[m
+[32m+[m[32m *[m
+[32m+[m[32m *   Copyright (c) 2012-2019 PX4 Development Team. All rights reserved.[m
+[32m+[m[32m *[m
+[32m+[m[32m * Redistribution and use in source and binary forms, with or without[m
+[32m+[m[32m * modification, are permitted provided that the following conditions[m
+[32m+[m[32m * are met:[m
+[32m+[m[32m *[m
+[32m+[m[32m * 1. Redistributions of source code must retain the above copyright[m
+[32m+[m[32m *    notice, this list of conditions and the following disclaimer.[m
+[32m+[m[32m * 2. Redistributions in binary form must reproduce the above copyright[m
+[32m+[m[32m *    notice, this list of conditions and the following disclaimer in[m
+[32m+[m[32m *    the documentation and/or other materials provided with the[m
+[32m+[m[32m *    distribution.[m
+[32m+[m[32m * 3. Neither the name PX4 nor the names of its contributors may be[m
+[32m+[m[32m *    used to endorse or promote products derived from this software[m
+[32m+[m[32m *    without specific prior written permission.[m
+[32m+[m[32m *[m
+[32m+[m[32m * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS[m
+[32m+[m[32m * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT[m
+[32m+[m[32m * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS[m
+[32m+[m[32m * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE[m
+[32m+[m[32m * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,[m
+[32m+[m[32m * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,[m
+[32m+[m[32m * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS[m
+[32m+[m[32m * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED[m
+[32m+[m[32m * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT[m
+[32m+[m[32m * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN[m
+[32m+[m[32m * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE[m
+[32m+[m[32m * POSSIBILITY OF SUCH DAMAGE.[m
+[32m+[m[32m *[m
+[32m+[m[32m ****************************************************************************/[m
+[32m+[m[32m/**[m
+[32m+[m[32m * @file px4_simple_App.c[m
+[32m+[m[32m * Minimal application example for PX4 autopilot[m
+[32m+[m[32m * followed by[m[41m [m
+[32m+[m[32m * @author Luis Valbuena <valbuenaster@gmail.com>[m
+[32m+[m[32m */[m
+[32m+[m
+[32m+[m[32m//#include <px4_platform_common/log.h> //Does not find it[m
+[32m+[m[32m#include <px4_config.h>[m
+[32m+[m[32m#include <px4_tasks.h>[m
+[32m+[m[32m#include <px4_posix.h>[m
+[32m+[m[32m#include <unistd.h>[m
+[32m+[m[32m#include <stdio.h>[m
+[32m+[m[32m#include <poll.h>[m
+[32m+[m[32m#include <string.h>[m
+[32m+[m[32m#include <math.h>[m
+[32m+[m
+[32m+[m[32m#include <uORB/uORB.h>[m
+[32m+[m[32m//#include <uORB/topics/vehicle_attitude.h>[m
+[32m+[m
+[32m+[m[32m#include <uORB/topics/sensor_combined.h>[m
+[32m+[m[32m#include <uORB/topics/sensor_accel.h>[m
+[32m+[m[32m#include <uORB/topics/vehicle_attitude.h>[m
+[32m+[m[32m#include <uORB/topics/actuator_armed.h>[m
+[32m+[m
+[32m+[m[32m#define UPDATE_ACCEL_READING 100[m
+[32m+[m[32m#define UPDATE_ARMED_CHECKING 100[m
+[32m+[m
+[32m+[m
+[32m+[m[32m__EXPORT int px4_simple_App_Luis_main(int argc, char *argv[]);[m
+[32m+[m
+[32m+[m[32mint px4_simple_App_Luis_main(int argc, char *argv[])[m
+[32m+[m[32m{[m
+[32m+[m[32m    bool enable_parameter = false;[m
+[32m+[m[32m    int counter = 0;[m
+[32m+[m
+[32m+[m[32m    PX4_INFO("Luis Valbuena testing how to code here");[m
+[32m+[m
+[32m+[m[32m    //Subscribing to a topic[m
+[32m+[m[32m    int sensor_sub_Handler = orb_subscribe(ORB_ID(sensor_combined));[m
+[32m+[m[32m    int accel_sub_Handler = orb_subscribe(ORB_ID(sensor_accel));[m
+[32m+[m[32m    int aircraft_armed_sub_Handler = orb_subscribe(ORB_ID(actuator_armed));[m
+[32m+[m
+[32m+[m[32m    //To advertise an altitude topic[m
+[32m+[m[32m    struct vehicle_attitude_s att;[m
+[32m+[m[32m    memset(&att,0,sizeof(att));[m
+[32m+[m[32m    orb_advert_t att_pub_Handler = orb_advertise(ORB_ID(vehicle_attitude), &att);[m
+[32m+[m
+[32m+[m[32m    px4_pollfd_struct_t fds[] = { { .fd = sensor_sub_Handler, .events = POLLIN},[m
+[32m+[m[32m                                  { .fd = accel_sub_Handler, .events = POLLIN},[m
+[32m+[m[32m                                  { .fd = aircraft_armed_sub_Handler, .events = POLLIN},};[m
+[32m+[m
+[32m+[m[32m    if(argc == 2)[m
+[32m+[m[32m    {[m
+[32m+[m[32m        char *buffer = argv[1];[m
+[32m+[m[32m        //PX4_INFO("buffer[1] = %c", buffer[0]);[m
+[32m+[m
+[32m+[m[32m        if( buffer[0] > '0' ) enable_parameter = true;[m
+[32m+[m
+[32m+[m[32m        if(enable_parameter)[m
+[32m+[m[32m        {[m
+[32m+[m[32m            //This limits the handler update at 5 Hz ==> 200 ms[m
+[32m+[m[32m            orb_set_interval(sensor_sub_Handler,200);//200 ms[m
+[32m+[m
+[32m+[m[32m            //This limits the handler update at 10 Hz ==> 100 ms[m
+[32m+[m[32m            orb_set_interval(accel_sub_Handler,UPDATE_ACCEL_READING);[m
+[32m+[m[32m            orb_set_interval(aircraft_armed_sub_Handler,UPDATE_ARMED_CHECKING);[m
+[32m+[m
+[32m+[m
+[32m+[m[32m            while(counter < 500)//THIS SHOULD HAVE ANOTHER CONDITION[m
+[32m+[m[32m            {[m
+[32m+[m[32m                int poll_ret = px4_poll(fds,3,1000);[m
+[32m+[m
+[32m+[m[32m                if(poll_ret == 0)[m
+[32m+[m[32m                {[m
+[32m+[m[32m                    PX4_INFO("I am not getting data within a second");[m
+[32m+[m[32m                }[m
+[32m+[m
+[32m+[m[32m                if(fds[0].revents & POLLIN)[m
+[32m+[m[32m                {[m
+[32m+[m[32m                    struct sensor_combined_s rawData;[m
+[32m+[m[32m                    orb_copy(ORB_ID(sensor_combined),sensor_sub_Handler,&rawData);[m
+[32m+[m[32m                    /*[m
+[32m+[m[32m                    PX4_INFO("Accelerometer: \t%8.4f, \t%8.4f, \t%8.4f",[m
+[32m+[m[32m                             (double) rawData.accelerometer_m_s2[0],[m
+[32m+[m[32m                             (double) rawData.accelerometer_m_s2[1],[m
+[32m+[m[32m                             (double) rawData.accelerometer_m_s2[2]);[m
+[32m+[m[32m                    */[m
+[32m+[m[32m                    att.q[0] = rawData.accelerometer_m_s2[0];[m
+[32m+[m[32m                    att.q[1] = rawData.accelerometer_m_s2[1];[m
+[32m+[m[32m                    att.q[2] = rawData.accelerometer_m_s2[2];[m
+[32m+[m
+[32m+[m[32m                    orb_publish(ORB_ID(vehicle_attitude),att_pub_Handler,&att);[m
+[32m+[m[32m                }[m
+[32m+[m
+[32m+[m[32m                if(fds[1].revents & POLLIN)[m
+[32m+[m[32m                {[m
+[32m+[m[32m                    struct sensor_accel_s measurements;[m
+[32m+[m[32m                    orb_copy(ORB_ID(sensor_accel),accel_sub_Handler,&measurements);[m
+[32m+[m
+[32m+[m[32m                    unsigned int timestamp = measurements.timestamp;	// time since system start (microseconds)[m
+[32m+[m[32m                    unsigned int device_id = measurements.device_id; // unique device ID for the sensor that does not change between power cycles[m
+[32m+[m[32m                    unsigned int error_count = measurements.error_count;[m
+[32m+[m
+[32m+[m[32m                    double x = measurements.x;  // acceleration in the NED X board axis in m/s^2[m
+[32m+[m[32m                    double y = measurements.y;  // acceleration in the NED Y board axis in m/s^2[m
+[32m+[m[32m                    double z = measurements.z;  // acceleration in the NED Z board axis in m/s^2[m
+[32m+[m
+[32m+[m[32m                    unsigned int integral_dt = measurements.integral_dt;  	//integration time  (microseconds)[m
+[32m+[m[32m                    double x_integral = measurements.x_integral;  // delta velocity in the NED X board axis in m/s over the integration time frame (integral_dt)[m
+[32m+[m[32m                    double y_integral = measurements.y_integral;  // delta velocity in the NED Y board axis in m/s over the integration time frame (integral_dt)[m
+[32m+[m[32m                    double z_integral = measurements.z_integral;  // delta velocity in the NED Z board axis in m/s over the integration time frame (integral_dt)[m
+[32m+[m
+[32m+[m[32m                    double temperature = measurements.temperature;	// temperature in degrees celsius[m
+[32m+[m
+[32m+[m[32m                    double scaling = measurements.scaling;  // scaling from raw to m/s^s[m
+[32m+[m[32m                    int x_raw = measurements.x_raw;[m
+[32m+[m[32m                    int y_raw = measurements.y_raw;[m
+[32m+[m[32m                    int z_raw = measurements.z_raw;[m
+[32m+[m
+[32m+[m[32m                    PX4_INFO("Readings from the sensor_accel topic : \t%i, \t%i, \t%i, \t%8.4f, \t%8.4f, \t%8.4f, \t%i, \t%8.4f, \t%8.4f, \t%8.4f, \t%8.4f, \t%8.4f, \t%i, \t%i, \t%i",[m
+[32m+[m[32m                             timestamp,device_id,error_count,x,y,z,integral_dt,x_integral,y_integral,z_integral,temperature,scaling,x_raw,y_raw,z_raw);[m
+[32m+[m
+[32m+[m[32m                }[m
+[32m+[m
+[32m+[m
+[32m+[m[32m                if(fds[2].revents & POLLIN)[m
+[32m+[m[32m                {[m
+[32m+[m[32m                    bool isArmed = false;[m
+[32m+[m[32m                    struct actuator_armed_s armedCheck;[m
+[32m+[m[32m                    orb_copy(ORB_ID(actuator_armed),aircraft_armed_sub_Handler,&armedCheck);[m
+[32m+[m
+[32m+[m[32m                    isArmed = armedCheck.armed;[m
+[32m+[m
+[32m+[m[32m                    if(isArmed)[m
+[32m+[m[32m                    {[m
+[32m+[m[32m                        PX4_INFO("It is Armed");[m
+[32m+[m[32m                    }else{[m
+[32m+[m[32m                        PX4_INFO("It is NOT Armed");[m
+[32m+[m[32m                    }[m
+[32m+[m[32m                }[m
+[32m+[m
+[32m+[m[32m                counter++;[m
+[32m+[m[32m            }[m
+[32m+[m[32m        }[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    PX4_INFO("Getting out");[m
+[32m+[m	[32mreturn OK;[m
+[32m+[m[32m}[m
+[32m+[m
+[1mdiff --git a/src/modules/integrated_accel/CMakeLists.txt b/src/modules/integrated_accel/CMakeLists.txt[m
+[1mnew file mode 100644[m
+[1mindex 0000000000..48e56f3573[m
+[1m--- /dev/null[m
+[1m+++ b/src/modules/integrated_accel/CMakeLists.txt[m
+[36m@@ -0,0 +1,41 @@[m
+[32m+[m[32m############################################################################[m
+[32m+[m[32m#[m
+[32m+[m[32m#   Copyright (c) 2015 PX4 Development Team. All rights reserved.[m
+[32m+[m[32m#[m
+[32m+[m[32m# Redistribution and use in source and binary forms, with or without[m
+[32m+[m[32m# modification, are permitted provided that the following conditions[m
+[32m+[m[32m# are met:[m
+[32m+[m[32m#[m
+[32m+[m[32m# 1. Redistributions of source code must retain the above copyright[m
+[32m+[m[32m#    notice, this list of conditions and the following disclaimer.[m
+[32m+[m[32m# 2. Redistributions in binary form must reproduce the above copyright[m
+[32m+[m[32m#    notice, this list of conditions and the following disclaimer in[m
+[32m+[m[32m#    the documentation and/or other materials provided with the[m
+[32m+[m[32m#    distribution.[m
+[32m+[m[32m# 3. Neither the name PX4 nor the names of its contributors may be[m
+[32m+[m[32m#    used to endorse or promote products derived from this software[m
+[32m+[m[32m#    without specific prior written permission.[m
+[32m+[m[32m#[m
+[32m+[m[32m# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS[m
+[32m+[m[32m# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT[m
+[32m+[m[32m# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS[m
+[32m+[m[32m# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE[m
+[32m+[m[32m# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,[m
+[32m+[m[32m# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,[m
+[32m+[m[32m# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS[m
+[32m+[m[32m# OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED[m
+[32m+[m[32m# AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT[m
+[32m+[m[32m# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN[m
+[32m+[m[32m# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE[m
+[32m+[m[32m# POSSIBILITY OF SUCH DAMAGE.[m
+[32m+[m[32m#[m
+[32m+[m[32m############################################################################[m
+[32m+[m[32mpx4_add_module([m
+[32m+[m	[32mMODULE modules__integrated_accel[m
+[32m+[m	[32mMAIN integrated_accel[m
+[32m+[m	[32mSTACK_MAIN 2000[m
+[32m+[m	[32mSRCS[m
+[32m+[m		[32mintegrated_accel_main.cpp[m
+[32m+[m[32m        DEPENDS[m
+[32m+[m[32m                px4_work_queue[m
+[32m+[m	[32m)[m
+[1mdiff --git a/src/modules/integrated_accel/integrated_accel_main.cpp b/src/modules/integrated_accel/integrated_accel_main.cpp[m
+[1mnew file mode 100644[m
+[1mindex 0000000000..2a1c5c1886[m
+[1m--- /dev/null[m
+[1m+++ b/src/modules/integrated_accel/integrated_accel_main.cpp[m
+[36m@@ -0,0 +1,320 @@[m
+[32m+[m[32m/****************************************************************************[m
+[32m+[m[32m *[m
+[32m+[m[32m *   Copyright (c) 2015-2019 PX4 Development Team. All rights reserved.[m
+[32m+[m[32m *[m
+[32m+[m[32m * Redistribution and use in source and binary forms, with or without[m
+[32m+[m[32m * modification, are permitted provided that the following conditions[m
+[32m+[m[32m * are met:[m
+[32m+[m[32m *[m
+[32m+[m[32m * 1. Redistributions of source code must retain the above copyright[m
+[32m+[m[32m *    notice, this list of conditions and the following disclaimer.[m
+[32m+[m[32m * 2. Redistributions in binary form must reproduce the above copyright[m
+[32m+[m[32m *    notice, this list of conditions and the following disclaimer in[m
+[32m+[m[32m *    the documentation and/or other materials provided with the[m
+[32m+[m[32m *    distribution.[m
+[32m+[m[32m * 3. Neither the name PX4 nor the names of its contributors may be[m
+[32m+[m[32m *    used to endorse or promote products derived from this software[m
+[32m+[m[32m *    without specific prior written permission.[m
+[32m+[m[32m *[m
+[32m+[m[32m * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS[m
+[32m+[m[32m * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT[m
+[32m+[m[32m * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS[m
+[32m+[m[32m * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE[m
+[32m+[m[32m * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,[m
+[32m+[m[32m * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,[m
+[32m+[m[32m * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS[m
+[32m+[m[32m * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED[m
+[32m+[m[32m * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT[m
+[32m+[m[32m * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN[m
+[32m+[m[32m * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE[m
+[32m+[m[32m * POSSIBILITY OF SUCH DAMAGE.[m
+[32m+[m[32m *[m
+[32m+[m[32m ****************************************************************************/[m
+[32m+[m
+[32m+[m[32m/**[m
+[32m+[m[32m * @file integrater_accel_main.cpp[m
+[32m+[m[32m * Implementation of basic integration for Volansi's interview.[m
+[32m+[m[32m *[m
+[32m+[m[32m * @author Luis Ariel Valbuena Reyes[m
+[32m+[m[32m */[m
+[32m+[m[32m/*[m
+[32m+[m[32m#include <px4_config.h>[m
+[32m+[m[32m#include <px4_tasks.h>[m
+[32m+[m[32m#include <px4_posix.h>[m
+[32m+[m[32m#include <unistd.h>[m
+[32m+[m[32m#include <stdio.h>[m
+[32m+[m[32m#include <poll.h>[m
+[32m+[m[32m#include <string.h>[m
+[32m+[m[32m#include <math.h>[m
+[32m+[m
+[32m+[m[32m#include <px4_defines.h>[m
+[32m+[m[32m#include <px4_module.h>[m
+[32m+[m[32m#include <px4_module_params.h>[m
+[32m+[m[32m#include <uORB/Subscription.hpp>[m
+[32m+[m[32m#include <uORB/SubscriptionCallback.hpp>[m
+[32m+[m[32m#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>[m
+[32m+[m[32m*/[m
+[32m+[m
+[32m+[m[32m//Same libraries that ekf2[m
+[32m+[m[32m#include <float.h>[m
+[32m+[m
+[32m+[m[32m#include <px4_config.h>[m
+[32m+[m[32m#include <px4_tasks.h>[m
+[32m+[m[32m#include <px4_posix.h>[m
+[32m+[m
+[32m+[m[32m#include <drivers/drv_hrt.h>[m
+[32m+[m[32m#include <lib/mathlib/mathlib.h>[m
+[32m+[m[32m#include <lib/perf/perf_counter.h>[m
+[32m+[m[32m#include <px4_defines.h>[m
+[32m+[m[32m#include <px4_module.h>[m
+[32m+[m[32m#include <px4_module_params.h>[m
+[32m+[m[32m#include <px4_posix.h>[m
+[32m+[m[32m#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>[m
+[32m+[m[32m#include <px4_time.h>[m
+[32m+[m[32m#include <uORB/Publication.hpp>[m
+[32m+[m[32m#include <uORB/PublicationMulti.hpp>[m
+[32m+[m[32m#include <uORB/Subscription.hpp>[m
+[32m+[m[32m#include <uORB/SubscriptionCallback.hpp>[m
+[32m+[m
+[32m+[m[32m#include <uORB/uORB.h>[m
+[32m+[m[32m#include <uORB/topics/sensor_combined.h>[m
+[32m+[m[32m#include <uORB/topics/parameter_update.h>[m
+[32m+[m[32m#include <uORB/topics/sensor_accel.h>[m
+[32m+[m[32m#include <uORB/topics/integrated_accel.h>[m
+[32m+[m[32m#include <uORB/topics/actuator_armed.h>[m
+[32m+[m
+[32m+[m
+[32m+[m[32m#define MICRO_S_2_SECOND 0.000001[m
+[32m+[m
+[32m+[m[32musing namespace time_literals;[m
+[32m+[m
+[32m+[m[32mextern "C" __EXPORT int integrated_accel_main(int argc, char *argv[]);[m
+[32m+[m
+[32m+[m[32m//class integrated_accel final : public ModuleBase<integrated_accel>, public ModuleParams, public px4::WorkItem[m
+[32m+[m[32mclass integrated_accel final : public ModuleBase<integrated_accel>, public ModuleParams, public px4::ScheduledWorkItem[m
+[32m+[m[32m{[m
+[32m+[m[32mpublic:[m
+[32m+[m[32m    integrated_accel(bool replay_mode);[m
+[32m+[m[32m    ~integrated_accel();[m
+[32m+[m
+[32m+[m[32m    /** @see ModuleBase */[m
+[32m+[m[32m    static int task_spawn(int argc, char *argv[]);[m
+[32m+[m[32m    static int custom_command(int argc, char *argv[]);[m
+[32m+[m[32m    static int print_usage(const char *reason = nullptr);[m
+[32m+[m[32m    /** @see ModuleBase */[m
+[32m+[m
+[32m+[m[32m    void Run() override;[m
+[32m+[m[32m    bool init();[m
+[32m+[m[32m    int print_status() override;[m
+[32m+[m
+[32m+[m[32mprivate:[m
+[32m+[m[32m    bool _replay_mode;[m
+[32m+[m[32m    hrt_abstime now;[m
+[32m+[m[32m    hrt_abstime before;[m
+[32m+[m[32m    hrt_abstime accelerometer_integral_dt;[m
+[32m+[m[32m    double accel_x;[m
+[32m+[m[32m    double accel_y;[m
+[32m+[m[32m    double accel_z;[m
+[32m+[m[32m    double _integrated_accel_x;[m
+[32m+[m[32m    double _integrated_accel_y;[m
+[32m+[m[32m    double _integrated_accel_z;[m
+[32m+[m
+[32m+[m[32m    uORB::SubscriptionCallbackWorkItem _sensors_sub{this, ORB_ID(sensor_combined)};[m
+[32m+[m[32m    uORB::SubscriptionCallbackWorkItem _actuator_armed_sub{this, ORB_ID(actuator_armed)};[m
+[32m+[m
+[32m+[m
+[32m+[m[32m    uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};[m
+[32m+[m[32m    //uORB::Subscription _actuator_armed_sub{ORB_ID(actuator_armed)};[m
+[32m+[m
+[32m+[m[32m    uORB::Publication<integrated_accel_s> _integrated_accel_pub{ORB_ID(integrated_accel)};[m
+[32m+[m
+[32m+[m[32m};[m
+[32m+[m[32m/*[m
+[32m+[m[32mintegrated_accel::integrated_accel(bool replay_mode):ModuleParams(nullptr),[m
+[32m+[m[32m                                                     WorkItem(MODULE_NAME, px4::wq_configurations::integrated_accel),[m
+[32m+[m[32m                                                     _replay_mode(replay_mode),[m
+[32m+[m[32m                                                     now(0),[m
+[32m+[m[32m                                                     accelerometer_integral_dt(0),[m
+[32m+[m[32m                                                     accel_x(0.0f),[m
+[32m+[m[32m                                                     accel_y(0.0f),[m
+[32m+[m[32m                                                     accel_z(0.0f),[m
+[32m+[m[32m                                                     _integrated_accel_x(0.0f),[m
+[32m+[m[32m                                                     _integrated_accel_y(0.0f),[m
+[32m+[m[32m                                                     _integrated_accel_z(0.0f)[m
+[32m+[m[32m{[m
+[32m+[m[32m    updateParams();[m
+[32m+[m[32m}[m
+[32m+[m[32m*/[m
+[32m+[m
+[32m+[m[32mintegrated_accel::integrated_accel(bool replay_mode):ModuleParams(nullptr),[m
+[32m+[m[32m                                                     ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::lp_default),[m
+[32m+[m[32m                                                     _replay_mode(replay_mode),[m
+[32m+[m[32m                                                     now(0),[m
+[32m+[m[32m                                                     before(0),[m
+[32m+[m[32m                                                     accelerometer_integral_dt(0),[m
+[32m+[m[32m                                                     accel_x(0.0f),[m
+[32m+[m[32m                                                     accel_y(0.0f),[m
+[32m+[m[32m                                                     accel_z(0.0f),[m
+[32m+[m[32m                                                     _integrated_accel_x(0.0f),[m
+[32m+[m[32m                                                     _integrated_accel_y(0.0f),[m
+[32m+[m[32m                                                     _integrated_accel_z(0.0f)[m
+[32m+[m[32m{[m
+[32m+[m[32m    updateParams();[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mintegrated_accel::~integrated_accel()[m
+[32m+[m[32m{[m
+[32m+[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mbool integrated_accel::init()[m
+[32m+[m[32m{[m
+[32m+[m[32m    if (!_sensors_sub.registerCallback()) {[m
+[32m+[m[32m        PX4_ERR("sensor combined callback registration failed!");[m
+[32m+[m[32m        return false;[m
+[32m+[m[32m    }[m
+[32m+[m[32m    if (!_actuator_armed_sub.registerCallback()) {[m
+[32m+[m[32m        PX4_ERR("actuator armed callback registration failed!");[m
+[32m+[m[32m        return false;[m
+[32m+[m[32m    }[m
+[32m+[m[32m   _actuator_armed_sub.set_interval_ms(2);[m
+[32m+[m[32m    PX4_INFO("the program entered integrated_accel::init()");[m
+[32m+[m[32m    //ScheduleOnInterval(100000,0); // 100000 us <-> 100 ms interval, 10 Hz rate[m
+[32m+[m
+[32m+[m[32m    return true;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid integrated_accel::Run()[m
+[32m+[m[32m{[m
+[32m+[m[32m    if (should_exit())[m
+[32m+[m[32m    {[m
+[32m+[m[32m        _sensors_sub.unregisterCallback();[m
+[32m+[m[32m        exit_and_cleanup();[m
+[32m+[m[32m        return;[m
+[32m+[m[32m    }[m
+[32m+[m[32m    sensor_combined_s sensors;[m
+[32m+[m[32m    actuator_armed_s ActuatorA;[m
+[32m+[m
+[32m+[m[32m    if(_actuator_armed_sub.update(&ActuatorA))[m
+[32m+[m[32m    {[m
+[32m+[m[32m        if(_sensors_sub.update(&sensors))[m
+[32m+[m[32m        {[m
+[32m+[m[32m            if(_parameter_update_sub.updated())[m
+[32m+[m[32m            {[m
+[32m+[m[32m                parameter_update_s pupdate;[m
+[32m+[m[32m                _parameter_update_sub.copy(&pupdate);[m
+[32m+[m
+[32m+[m[32m                updateParams();[m
+[32m+[m[32m            }[m
+[32m+[m
+[32m+[m[32m            struct integrated_accel_s integratedValues;[m
+[32m+[m[32m            integratedValues.armed = ActuatorA.armed;[m
+[32m+[m[32m            integratedValues.armed = true;//replace lated[m
+[32m+[m
+[32m+[m[32m            if(integratedValues.armed)[m
+[32m+[m[32m            {[m
+[32m+[m[32m                now = sensors.timestamp;[m
+[32m+[m[32m                //accelerometer_integral_dt = sensors.accelerometer_timestamp_relative;//In microseconds[m
+[32m+[m[32m                accelerometer_integral_dt = now - before;[m
+[32m+[m[32m                accel_x = sensors.accelerometer_m_s2[0];[m
+[32m+[m[32m                accel_y = sensors.accelerometer_m_s2[1];[m
+[32m+[m[32m                accel_z = sensors.accelerometer_m_s2[2];[m
+[32m+[m
+[32m+[m[32m                if(accelerometer_integral_dt == 0)[m
+[32m+[m[32m                {[m
+[32m+[m[32m                    //PX4_INFO("accelerometer_integral_dt == 0, set to 1");[m
+[32m+[m[32m                    accelerometer_integral_dt = 100000;//100 ms[m
+[32m+[m[32m                }[m
+[32m+[m
+[32m+[m[32m                _integrated_accel_x += accel_x * accelerometer_integral_dt * MICRO_S_2_SECOND;[m
+[32m+[m[32m                _integrated_accel_y += accel_y * accelerometer_integral_dt * MICRO_S_2_SECOND;[m
+[32m+[m[32m                _integrated_accel_z += accel_z * accelerometer_integral_dt * MICRO_S_2_SECOND;[m
+[32m+[m
+[32m+[m[32m                //PX4_INFO("Readings: \t%lu,\t %8.4f, \t %8.4f, \t %8.4f.",now,accel_x,accel_y,accel_z);[m
+[32m+[m[32m                integratedValues.integral_dt = accelerometer_integral_dt;[m
+[32m+[m[32m                integratedValues.integrated_x = _integrated_accel_x;[m
+[32m+[m[32m                integratedValues.integrated_y = _integrated_accel_y;[m
+[32m+[m[32m                integratedValues.integrated_z = _integrated_accel_z;[m
+[32m+[m[32m                integratedValues.timestamp = now;[m
+[32m+[m[32m                before = now;[m
+[32m+[m[32m                 _integrated_accel_pub.publish(integratedValues);[m
+[32m+[m[32m            }[m
+[32m+[m[32m        }[m
+[32m+[m[32m    }[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mint integrated_accel::print_status()[m
+[32m+[m[32m{[m
+[32m+[m[32m    PX4_INFO("This should print a status");[m
+[32m+[m[32m    //perf_print_counter(_ekf_update_perf);[m
+[32m+[m
+[32m+[m[32m    return 0;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mint integrated_accel_main(int argc, char *argv[])[m
+[32m+[m[32m{[m
+[32m+[m[32m    return integrated_accel::main(argc,argv);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mint integrated_accel::task_spawn(int argc, char *argv[])[m
+[32m+[m[32m{[m
+[32m+[m[32m    static constexpr uint32_t UPDATE_RATE{10000_us};//This should set the report freq to 10 Hz[m
+[32m+[m[32m    bool replay_mode = false;[m
+[32m+[m[32m    if (argc > 1 && !strcmp(argv[1], "-r")) {[m
+[32m+[m[32m        PX4_INFO("replay mode enabled");[m
+[32m+[m[32m        replay_mode = true;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    integrated_accel *instance = new integrated_accel(replay_mode);[m
+[32m+[m
+[32m+[m[32m    if (instance) {[m
+[32m+[m[32m        _object.store(instance);[m
+[32m+[m[32m        instance->ScheduleOnInterval(UPDATE_RATE,100);//This should set the report freq to 10 Hz[m
+[32m+[m[32m        _task_id = task_id_is_work_queue;[m
+[32m+[m
+[32m+[m[32m        if (instance->init())[m
+[32m+[m[32m        {[m
+[32m+[m[32m            return PX4_OK;[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m    } else {[m
+[32m+[m[32m        PX4_ERR("alloc failed");[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    delete instance;[m
+[32m+[m[32m    _object.store(nullptr);[m
+[32m+[m[32m    _task_id = -1;[m
+[32m+[m
+[32m+[m[32m    return PX4_ERROR;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mint integrated_accel::custom_command(int argc, char *argv[])[m
+[32m+[m[32m{[m
+[32m+[m[32m    return print_usage("unknown command");[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mint integrated_accel::print_usage(const char *reason)[m
+[32m+[m[32m{[m
+[32m+[m[32m    if (reason) {[m
+[32m+[m[32m            PX4_WARN("%s\n", reason);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        PRINT_MODULE_DESCRIPTION([m
+[32m+[m[32m            R"DESCR_STR([m
+[32m+[m[32m    ### Description[m
+[32m+[m[32m    Rough integrator for take-home interview at Volansi.[m
+[32m+[m
+[32m+[m[32m    The integrator is of the form integrated_value += accel_m_s2 * integral_dt.​[m
+[32m+[m
+[32m+[m[32m    integrated_accel should be capable to start in replay mode (`-r`): in this mode it does not access the system time, but only uses the[m
+[32m+[m[32m    timestamps from the sensor topics.[m
+[32m+[m
+[32m+[m[32m    )DESCR_STR");[m
+[32m+[m
+[32m+[m[32m        PRINT_MODULE_USAGE_NAME("integrated_accel", "rough integrator");[m
+[32m+[m[32m        PRINT_MODULE_USAGE_COMMAND("start");[m
+[32m+[m[32m        PRINT_MODULE_USAGE_PARAM_FLAG('r', "Enable replay mode", true);[m
+[32m+[m[32m        PRINT_MODULE_USAGE_DEFAULT_COMMANDS();[m
+[32m+[m
+[32m+[m[32m        return 0;[m
+[32m+[m[32m}[m
+[1mdiff --git a/src/modules/logger/logger.cpp b/src/modules/logger/logger.cpp[m
+[1mindex d1d43a0102..b00a9713b2 100644[m
+[1m--- a/src/modules/logger/logger.cpp[m
+[1m+++ b/src/modules/logger/logger.cpp[m
+[36m@@ -48,6 +48,7 @@[m
+ #include <uORB/uORBTopics.h>[m
+ #include <uORB/topics/parameter_update.h>[m
+ #include <uORB/topics/vehicle_command_ack.h>[m
+[32m+[m[32m#include <uORB/topics/integrated_accel.h>[m
+ [m
+ #include <drivers/drv_hrt.h>[m
+ #include <mathlib/math/Limits.hpp>[m
+[36m@@ -551,6 +552,8 @@[m [mvoid Logger::add_default_topics()[m
+ 	add_topic("vehicle_status_flags");[m
+ 	add_topic("vtol_vehicle_status", 200);[m
+ [m
+[32m+[m[32m    add_topic("integrated_accel", 100);[m
+[32m+[m
+ 	add_topic_multi("actuator_outputs", 100);[m
+ 	add_topic_multi("battery_status", 500);[m
+ 	add_topic_multi("distance_sensor", 100);[m
