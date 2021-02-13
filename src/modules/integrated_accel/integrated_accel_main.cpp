@@ -83,11 +83,13 @@
 #include <uORB/topics/integrated_accel.h>
 #include <uORB/topics/actuator_armed.h>
 
+
 #define MICRO_S_2_SECOND 0.000001
 
 extern "C" __EXPORT int integrated_accel_main(int argc, char *argv[]);
 
-class integrated_accel final : public ModuleBase<integrated_accel>, public ModuleParams, public px4::WorkItem
+//class integrated_accel final : public ModuleBase<integrated_accel>, public ModuleParams, public px4::WorkItem
+class integrated_accel final : public ModuleBase<integrated_accel>, public ModuleParams, public px4::ScheduledWorkItem
 {
 public:
     integrated_accel(bool replay_mode);
@@ -117,15 +119,31 @@ private:
     uORB::SubscriptionCallbackWorkItem _sensors_sub{this, ORB_ID(sensor_combined)};
     uORB::SubscriptionCallbackWorkItem _actuator_armed_sub{this, ORB_ID(actuator_armed)};
 
+
     uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
     //uORB::Subscription _actuator_armed_sub{ORB_ID(actuator_armed)};
 
     uORB::Publication<integrated_accel_s> _integrated_accel_pub{ORB_ID(integrated_accel)};
 
 };
-
+/*
 integrated_accel::integrated_accel(bool replay_mode):ModuleParams(nullptr),
                                                      WorkItem(MODULE_NAME, px4::wq_configurations::integrated_accel),
+                                                     _replay_mode(replay_mode),
+                                                     now(0),
+                                                     accelerometer_integral_dt(0),
+                                                     accel_x(0.0f),
+                                                     accel_y(0.0f),
+                                                     accel_z(0.0f),
+                                                     _integrated_accel_x(0.0f),
+                                                     _integrated_accel_y(0.0f),
+                                                     _integrated_accel_z(0.0f)
+{
+    updateParams();
+}
+*/
+integrated_accel::integrated_accel(bool replay_mode):ModuleParams(nullptr),
+                                                     ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::lp_default),
                                                      _replay_mode(replay_mode),
                                                      now(0),
                                                      accelerometer_integral_dt(0),
@@ -155,6 +173,7 @@ bool integrated_accel::init()
         return false;
     }
     PX4_INFO("the program entered integrated_accel::init()");
+    //ScheduleOnInterval(100000,0); // 100000 us <-> 100 ms interval, 10 Hz rate
 
     return true;
 }
@@ -241,9 +260,11 @@ int integrated_accel::task_spawn(int argc, char *argv[])
 
     if (instance) {
         _object.store(instance);
+        instance->ScheduleOnInterval(100000);//This should set the report freq to 10 Hz
         _task_id = task_id_is_work_queue;
 
-        if (instance->init()) {
+        if (instance->init())
+        {
             return PX4_OK;
         }
 
